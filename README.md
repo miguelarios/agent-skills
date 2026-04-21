@@ -29,20 +29,27 @@ Skills from other repos that I install but don't maintain are tracked in [`third
 **One-liner (no clone needed):**
 
 ```bash
-bash -c "$(curl -fsSL https://raw.githubusercontent.com/miguelarios/agent-skills/main/scripts/install-third-party.sh)"
+bash -c "$(curl -fsSL https://raw.githubusercontent.com/miguelarios/agent-skills/main/scripts/install-third-party.sh)" _ --agents claude-code,codex,openclaw
 ```
 
-Add `--dry-run` to preview without installing:
+- `--agents <csv>` tells `npx skills add` which agents to **symlink** the skill into (it does not copy — one canonical copy lives in `~/.agents/skills/`).
+- Omit `--agents` to run interactively (prompts per skill — tedious for batches).
+- Add `--dry-run` to preview without installing.
 
-```bash
-bash -c "$(curl -fsSL https://raw.githubusercontent.com/miguelarios/agent-skills/main/scripts/install-third-party.sh)" _ --dry-run
+**Per-skill agent overrides**: append `| agent1,agent2` to a line in `third-party-skills.txt` if one skill should go to a different set than the `--agents` flag default:
+
+```
+# Default: whatever --agents says
+https://github.com/googleworkspace/cli/tree/main/skills/gws-gmail
+# Override: only Claude Code gets this one
+https://github.com/googleworkspace/cli/tree/main/skills/gws-slides | claude-code
 ```
 
 **From a local clone:**
 
 ```bash
-./scripts/install-third-party.sh            # install every URL in the manifest
-./scripts/install-third-party.sh --dry-run  # preview without running
+./scripts/install-third-party.sh --agents claude-code,codex --dry-run  # preview
+./scripts/install-third-party.sh --agents claude-code,codex            # install
 ```
 
 Add a new entry by appending its URL to `third-party-skills.txt` (or removing an entry to stop tracking it).
