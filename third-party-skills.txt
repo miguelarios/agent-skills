@@ -37,6 +37,7 @@ https://github.com/googleworkspace/cli/tree/main/skills/gws-people
 # Sheets
 https://github.com/googleworkspace/cli/tree/main/skills/gws-sheets
 https://github.com/googleworkspace/cli/tree/main/skills/gws-sheets-read
+https://github.com/googleworkspace/cli/tree/main/skills/gws-sheets-append
 
 # Slides
 https://github.com/googleworkspace/cli/tree/main/skills/gws-slides

@@ -18,6 +18,13 @@ fi
 DRY_RUN=0
 [[ "${1:-}" == "--dry-run" ]] && DRY_RUN=1
 
+# Warn on duplicate URLs before installing
+dupes=$(grep -v '^[[:space:]]*#' "$MANIFEST" | grep -v '^[[:space:]]*$' | sort | uniq -d || true)
+if [[ -n "$dupes" ]]; then
+  echo "Warning: duplicate URLs in manifest:" >&2
+  echo "$dupes" >&2
+fi
+
 total=0
 failed=0
 failed_urls=()
