@@ -22,6 +22,17 @@ npx skills check
 npx skills update
 ```
 
+## Third-party skills I use
+
+Skills from other repos that I install but don't maintain are tracked in [`third-party-skills.txt`](third-party-skills.txt). Install them all at once with:
+
+```bash
+./scripts/install-third-party.sh            # install every URL in the manifest
+./scripts/install-third-party.sh --dry-run  # preview without running
+```
+
+Add a new entry by appending its URL to `third-party-skills.txt` (or removing an entry to stop tracking it).
+
 ## Skills
 
 | Skill | Description |
