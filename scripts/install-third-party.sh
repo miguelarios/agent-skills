@@ -35,11 +35,18 @@ DEFAULT_MANIFEST_URL="https://raw.githubusercontent.com/miguelarios/agent-skills
 LOCK_FILE="${HOME}/.agents/.skill-lock.json"
 
 # ---------- Parse flags ----------
+# When invoked via `bash -c "$(curl ...)" --dry-run` (without a `_` placeholder
+# for $0), the flag lands in $0. Fold $0 into the positional args if it looks
+# like one of our flags, so both invocation styles work.
+if [[ "${0:-}" == --dry-run || "${0:-}" == -h || "${0:-}" == --help ]]; then
+  set -- "$0" "$@"
+fi
+
 DRY_RUN=0
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --dry-run)  DRY_RUN=1; shift ;;
-    -h|--help)  sed -n '1,32p' "$0" 2>/dev/null; exit 0 ;;
+    -h|--help)  sed -n '1,40p' "${BASH_SOURCE[0]:-/dev/stdin}" 2>/dev/null; exit 0 ;;
     *)          echo "Unknown flag: $1" >&2; exit 2 ;;
   esac
 done
@@ -104,7 +111,7 @@ total=0
 failed=0
 failed_urls=()
 
-while IFS= read -r raw_line || [[ -n "$raw_line" ]]; do
+while IFS= read -r -u 3 raw_line || [[ -n "$raw_line" ]]; do
   line="${raw_line%%#*}"
   line="${line#"${line%%[![:space:]]*}"}"
   line="${line%"${line##*[![:space:]]}"}"
@@ -136,13 +143,15 @@ while IFS= read -r raw_line || [[ -n "$raw_line" ]]; do
     continue
   fi
 
+  # Redirect stdin from /dev/null so `npx skills add` can't consume the rest
+  # of the manifest (fd 3 feeds the loop; npx inherits stdin otherwise).
   # shellcheck disable=SC2086
-  if ! eval npx skills add $flags"$url"; then
+  if ! eval npx skills add $flags"$url" < /dev/null; then
     failed=$((failed + 1))
     failed_urls+=("$url")
     echo "    ✗ failed"
   fi
-done < "$MANIFEST"
+done 3< "$MANIFEST"
 
 echo
 echo "Processed: $total   Failed: $failed"
