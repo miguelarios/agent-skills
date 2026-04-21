@@ -24,7 +24,21 @@ npx skills update
 
 ## Third-party skills I use
 
-Skills from other repos that I install but don't maintain are tracked in [`third-party-skills.txt`](third-party-skills.txt). Install them all at once with:
+Skills from other repos that I install but don't maintain are tracked in [`third-party-skills.txt`](third-party-skills.txt).
+
+**One-liner (no clone needed):**
+
+```bash
+bash -c "$(curl -fsSL https://raw.githubusercontent.com/miguelarios/agent-skills/main/scripts/install-third-party.sh)"
+```
+
+Add `--dry-run` to preview without installing:
+
+```bash
+bash -c "$(curl -fsSL https://raw.githubusercontent.com/miguelarios/agent-skills/main/scripts/install-third-party.sh)" _ --dry-run
+```
+
+**From a local clone:**
 
 ```bash
 ./scripts/install-third-party.sh            # install every URL in the manifest

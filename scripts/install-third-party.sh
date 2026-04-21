@@ -1,19 +1,45 @@
 #!/usr/bin/env bash
-# Install every skill listed in ../third-party-skills.txt via `npx skills add`.
+# Install every skill listed in third-party-skills.txt via `npx skills add`.
 # Blank lines and lines starting with # are ignored.
 #
 # Usage:
-#   ./scripts/install-third-party.sh              # install all
+#   ./scripts/install-third-party.sh              # install all (local manifest)
 #   ./scripts/install-third-party.sh --dry-run    # print commands without running
+#
+# Brew-style one-liner (runs without cloning the repo):
+#   bash -c "$(curl -fsSL https://raw.githubusercontent.com/miguelarios/agent-skills/main/scripts/install-third-party.sh)"
+#
+# Override manifest location via env:
+#   MANIFEST_URL=https://... ./install-third-party.sh
 set -euo pipefail
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-MANIFEST="$SCRIPT_DIR/../third-party-skills.txt"
+DEFAULT_MANIFEST_URL="https://raw.githubusercontent.com/miguelarios/agent-skills/main/third-party-skills.txt"
 
-if [[ ! -f "$MANIFEST" ]]; then
-  echo "Manifest not found: $MANIFEST" >&2
-  exit 1
+# Locate manifest: prefer a local copy next to the script, else fetch from the repo.
+SCRIPT_PATH="${BASH_SOURCE[0]:-$0}"
+if [[ -f "$SCRIPT_PATH" ]]; then
+  SCRIPT_DIR="$(cd "$(dirname "$SCRIPT_PATH")" && pwd)"
+  LOCAL_MANIFEST="$SCRIPT_DIR/../third-party-skills.txt"
+else
+  LOCAL_MANIFEST=""
 fi
+
+MANIFEST_CLEANUP=""
+if [[ -n "${MANIFEST_URL:-}" ]]; then
+  MANIFEST="$(mktemp)"
+  MANIFEST_CLEANUP="$MANIFEST"
+  echo "Fetching manifest from $MANIFEST_URL"
+  curl -fsSL "$MANIFEST_URL" -o "$MANIFEST"
+elif [[ -n "$LOCAL_MANIFEST" && -f "$LOCAL_MANIFEST" ]]; then
+  MANIFEST="$LOCAL_MANIFEST"
+else
+  MANIFEST="$(mktemp)"
+  MANIFEST_CLEANUP="$MANIFEST"
+  echo "No local manifest found — fetching from $DEFAULT_MANIFEST_URL"
+  curl -fsSL "$DEFAULT_MANIFEST_URL" -o "$MANIFEST"
+fi
+
+trap '[[ -n "$MANIFEST_CLEANUP" ]] && rm -f "$MANIFEST_CLEANUP"' EXIT
 
 DRY_RUN=0
 [[ "${1:-}" == "--dry-run" ]] && DRY_RUN=1
