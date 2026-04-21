@@ -26,30 +26,38 @@ npx skills update
 
 Skills from other repos that I install but don't maintain are tracked in [`third-party-skills.txt`](third-party-skills.txt).
 
+**Bootstrap (one time)**: before the first batch run, install *any* single skill interactively (without `-y`) so the skills CLI writes your agent selection to `~/.agents/.skill-lock.json → lastSelectedAgents`. Every batch run after that reuses that set.
+
+```bash
+npx skills add https://github.com/googleworkspace/cli/tree/main/skills/gws-shared
+# pick the agents you want — this populates lastSelectedAgents
+```
+
 **One-liner (no clone needed):**
 
 ```bash
-bash -c "$(curl -fsSL https://raw.githubusercontent.com/miguelarios/agent-skills/main/scripts/install-third-party.sh)" _ --agents claude-code,codex,openclaw
+bash -c "$(curl -fsSL https://raw.githubusercontent.com/miguelarios/agent-skills/main/scripts/install-third-party.sh)"
 ```
 
-- `--agents <csv>` tells `npx skills add` which agents to **symlink** the skill into (it does not copy — one canonical copy lives in `~/.agents/skills/`).
-- Omit `--agents` to run interactively (prompts per skill — tedious for batches).
-- Add `--dry-run` to preview without installing.
+- Uses `-g -y` only. The skills CLI routes symlinks to whatever agents are in `lastSelectedAgents` — canonical copy lives in `~/.agents/skills/<name>` with symlinks into each agent's dir.
+- Add `--dry-run` to preview.
 
-**Per-skill agent overrides**: append `| agent1,agent2` to a line in `third-party-skills.txt` if one skill should go to a different set than the `--agents` flag default:
+**Why no `-a` flag?** Passing `-a <agent>` to `npx skills add` silently switches the install mode from *symlink* to *copy*. That breaks the canonical-plus-symlink pattern and produces independent copies that drift. The script never passes `-a` by default; use a per-skill override only when you genuinely need a subset (and accept the copy).
+
+**Per-skill agent override** (rare — triggers copy mode): append `| agent1,agent2`:
 
 ```
-# Default: whatever --agents says
+# Normal: symlink to lastSelectedAgents
 https://github.com/googleworkspace/cli/tree/main/skills/gws-gmail
-# Override: only Claude Code gets this one
+# Override: COPY to Claude Code only
 https://github.com/googleworkspace/cli/tree/main/skills/gws-slides | claude-code
 ```
 
 **From a local clone:**
 
 ```bash
-./scripts/install-third-party.sh --agents claude-code,codex --dry-run  # preview
-./scripts/install-third-party.sh --agents claude-code,codex            # install
+./scripts/install-third-party.sh --dry-run  # preview
+./scripts/install-third-party.sh            # install
 ```
 
 Add a new entry by appending its URL to `third-party-skills.txt` (or removing an entry to stop tracking it).
