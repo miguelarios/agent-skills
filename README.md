@@ -40,7 +40,9 @@ bash -c "$(curl -fsSL https://raw.githubusercontent.com/miguelarios/agent-skills
 ```
 
 - Uses `-g -y` only. The skills CLI routes symlinks to whatever agents are in `lastSelectedAgents` — canonical copy lives in `~/.agents/skills/<name>` with symlinks into each agent's dir.
-- Add `--dry-run` to preview.
+- Flags:
+  - `--dry-run` — preview without installing.
+  - `--quiet` / `-q` — suppress the npx TUI banners; show one line per skill (`[13/31] <url> ... ✓`).
 
 **Why no `-a` flag?** Passing `-a <agent>` to `npx skills add` silently switches the install mode from *symlink* to *copy*. That breaks the canonical-plus-symlink pattern and produces independent copies that drift. The script never passes `-a` by default; use a per-skill override only when you genuinely need a subset (and accept the copy).
 

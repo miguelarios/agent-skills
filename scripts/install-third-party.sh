@@ -23,6 +23,7 @@
 # Usage:
 #   ./install-third-party.sh
 #   ./install-third-party.sh --dry-run
+#   ./install-third-party.sh --quiet     # suppress npx banners; print one line per skill
 #
 # Brew-style one-liner (no clone):
 #   bash -c "$(curl -fsSL https://raw.githubusercontent.com/miguelarios/agent-skills/main/scripts/install-third-party.sh)"
@@ -38,16 +39,18 @@ LOCK_FILE="${HOME}/.agents/.skill-lock.json"
 # When invoked via `bash -c "$(curl ...)" --dry-run` (without a `_` placeholder
 # for $0), the flag lands in $0. Fold $0 into the positional args if it looks
 # like one of our flags, so both invocation styles work.
-if [[ "${0:-}" == --dry-run || "${0:-}" == -h || "${0:-}" == --help ]]; then
+if [[ "${0:-}" == --dry-run || "${0:-}" == --quiet || "${0:-}" == -q || "${0:-}" == -h || "${0:-}" == --help ]]; then
   set -- "$0" "$@"
 fi
 
 DRY_RUN=0
+QUIET=0
 while [[ $# -gt 0 ]]; do
   case "$1" in
-    --dry-run)  DRY_RUN=1; shift ;;
-    -h|--help)  sed -n '1,40p' "${BASH_SOURCE[0]:-/dev/stdin}" 2>/dev/null; exit 0 ;;
-    *)          echo "Unknown flag: $1" >&2; exit 2 ;;
+    --dry-run)    DRY_RUN=1; shift ;;
+    -q|--quiet)   QUIET=1; shift ;;
+    -h|--help)    sed -n '1,40p' "${BASH_SOURCE[0]:-/dev/stdin}" 2>/dev/null; exit 0 ;;
+    *)            echo "Unknown flag: $1" >&2; exit 2 ;;
   esac
 done
 
@@ -106,8 +109,11 @@ if [[ -n "$dupes" ]]; then
   echo "$dupes" >&2
 fi
 
+# ---------- Count entries for progress display ----------
+total_entries=$(grep -v '^[[:space:]]*#' "$MANIFEST" | awk 'NF' | wc -l | tr -d ' ')
+
 # ---------- Install loop ----------
-total=0
+idx=0
 failed=0
 failed_urls=()
 
@@ -126,19 +132,21 @@ while IFS= read -r -u 3 raw_line || [[ -n "$raw_line" ]]; do
     override="${override%"${override##*[![:space:]]}"}"
   fi
 
-  total=$((total + 1))
+  idx=$((idx + 1))
+  prefix="[$idx/$total_entries]"
 
   if [[ -n "$override" ]]; then
     # Override path: use -a, which switches the CLI from symlink to copy.
     flags="-g -y $(agent_flags "$override")"
-    echo "[$total] $url  (agents: $override — COPY MODE)"
+    label="$prefix $url  (agents: $override — COPY MODE)"
   else
     # Default path: -g -y only; CLI symlinks to lastSelectedAgents.
     flags="-g -y "
-    echo "[$total] $url"
+    label="$prefix $url"
   fi
 
   if [[ $DRY_RUN -eq 1 ]]; then
+    echo "$label"
     echo "    (dry-run) npx skills add $flags$url"
     continue
   fi
@@ -146,15 +154,28 @@ while IFS= read -r -u 3 raw_line || [[ -n "$raw_line" ]]; do
   # Redirect stdin from /dev/null so `npx skills add` can't consume the rest
   # of the manifest (fd 3 feeds the loop; npx inherits stdin otherwise).
   # shellcheck disable=SC2086
-  if ! eval npx skills add $flags"$url" < /dev/null; then
-    failed=$((failed + 1))
-    failed_urls+=("$url")
-    echo "    ✗ failed"
+  if [[ $QUIET -eq 1 ]]; then
+    # One-line-per-skill progress; suppress npx's TUI output but keep errors.
+    printf '%s ... ' "$label"
+    if eval npx skills add $flags"$url" > /dev/null 2>&1 < /dev/null; then
+      echo "✓"
+    else
+      echo "✗"
+      failed=$((failed + 1))
+      failed_urls+=("$url")
+    fi
+  else
+    echo "$label"
+    if ! eval npx skills add $flags"$url" < /dev/null; then
+      failed=$((failed + 1))
+      failed_urls+=("$url")
+      echo "    ✗ failed"
+    fi
   fi
 done 3< "$MANIFEST"
 
 echo
-echo "Processed: $total   Failed: $failed"
+echo "Processed: $idx/$total_entries   Failed: $failed"
 if [[ $failed -gt 0 ]]; then
   echo "Failed URLs:"
   printf '  %s\n' "${failed_urls[@]}"
