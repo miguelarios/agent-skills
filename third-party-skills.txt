@@ -53,3 +53,9 @@ https://github.com/googleworkspace/cli/tree/main/skills/recipe-create-shared-dri
 https://github.com/googleworkspace/cli/tree/main/skills/recipe-create-vacation-responder
 https://github.com/googleworkspace/cli/tree/main/skills/recipe-email-drive-link
 https://github.com/googleworkspace/cli/tree/main/skills/recipe-find-free-time
+
+# ---- Peekaboo (macOS automation) ----
+# https://github.com/openclaw/Peekaboo
+# Note: openclaw skills require --dangerously-accept-openclaw-risks; the
+# install script adds the flag automatically for openclaw URLs.
+https://github.com/openclaw/Peekaboo/tree/main/skills/peekaboo

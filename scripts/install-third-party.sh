@@ -145,6 +145,13 @@ while IFS= read -r -u 3 raw_line || [[ -n "$raw_line" ]]; do
     label="$prefix $url"
   fi
 
+  # Community sources (e.g. openclaw) require an explicit risk-acceptance flag
+  # or the CLI blocks the install. Add the flag automatically when the URL
+  # comes from one of those orgs.
+  if [[ "$url" == *"github.com/openclaw/"* ]]; then
+    flags+="--dangerously-accept-openclaw-risks "
+  fi
+
   if [[ $DRY_RUN -eq 1 ]]; then
     echo "$label"
     echo "    (dry-run) npx skills add $flags$url"
