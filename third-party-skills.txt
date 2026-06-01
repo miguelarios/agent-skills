@@ -59,3 +59,7 @@ https://github.com/googleworkspace/cli/tree/main/skills/recipe-find-free-time
 # Note: openclaw skills require --dangerously-accept-openclaw-risks; the
 # install script adds the flag automatically for openclaw URLs.
 https://github.com/openclaw/Peekaboo/tree/main/skills/peekaboo
+
+# ---- Product Manager Skills (Dean Peters) ----
+# https://github.com/deanpeters/Product-Manager-Skills
+https://github.com/deanpeters/Product-Manager-Skills/tree/main/skills/problem-statement
