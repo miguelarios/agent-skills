@@ -87,7 +87,7 @@ Names and Usernames: Source, Side, GitLens, Claude, Prettier, Code
 The contents of the clipboard, captured if the user copies something within 3 seconds before starting dictation.
 
 **USER SELECTED TEXT**
-The currently selected text before dictation. Requires manual JSON config edit (`"context_from_selection": true`) — not available as a UI toggle.
+The currently selected text before dictation. Requires manual JSON config edit (`"contextFromSelection": true`) — not available as a UI toggle.
 
 **EXAMPLES OF CORRECT BEHAVIOR**
 Few-shot examples included in the prompt as User/Assistant pairs. How they work differs between default and custom modes:
