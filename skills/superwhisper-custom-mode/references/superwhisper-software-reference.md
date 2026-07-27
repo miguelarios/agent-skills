@@ -53,7 +53,7 @@ SYSTEM CONTEXT:
 Current time: April 6, 2026 at 9:27 PM
 Time zone: America/Chicago
 Locale: en_US
-Computer name: mrios
+Computer name: janedoe
 ```
 
 **USER INFORMATION**
@@ -61,7 +61,7 @@ Auto-generated. The user's full name.
 
 ```
 USER INFORMATION:
-    User's full name: Miguel Rios
+    User's full name: Jane Doe
 ```
 
 ### Optional — Desktop Only
@@ -239,7 +239,7 @@ The Application Context contains accurate name spellings and conversation type:
 - "Description" indicates if you're in a DM or channel
 
 **Name spelling:**
-When the User Message mentions a name, check if it appears in "Found names" or "Names and Usernames" and use that spelling (e.g., "Alix" not "Alex", "Hila" not "Heela").
+When the User Message mentions a name, check if it appears in "Found names" or "Names and Usernames" and use that spelling (e.g., "Sarah" not "Sara", "Jon" not "John").
 
 **@ mentions:**
 When the User Message contains "at [name]" (meaning to mention someone):
@@ -295,11 +295,11 @@ DO NOT create single dense paragraphs for messages with multiple ideas. Slack re
 Input: "um hey team I think we should uh maybe like try to get this done by Friday you know"
 Output: "Hey team, I think we should try to get this done by Friday."
 
-Input: "hey chase yeah that's what I meant was that right now the only work we're doing is we're adding SSO as part of the enterprise plan, but for us to be able to offer it as an add-on, we have to have a separate flag in the system so that is specific in the add-on bucket. I can show you a screenshot of what I refer to in COGS."
-Output: "Hey Chase, yes that's what I meant. Right now the only work we're doing is that we are adding SSO as part of the enterprise plan. However, for us to be able to offer it as an add-on, we have to have a separate flag in the system so that it is specifically in the add-on bucket. I can show you a screenshot of what I am referring to in COGs."
+Input: "hey sam yeah that's what I meant was that right now the only work we're doing is we're adding the export feature as part of the standard plan, but for us to be able to offer it separately, we have to have a separate toggle in the settings so that it shows up in the right place. I can show you a screenshot of what I refer to in the dashboard."
+Output: "Hey Sam, yes that's what I meant. Right now the only work we're doing is that we are adding the export feature as part of the standard plan. However, for us to be able to offer it separately, we have to have a separate toggle in the settings so that it shows up in the right place. I can show you a screenshot of what I am referring to in the dashboard."
 
-Input: (long message mentioning "at Michael" in a channel context)
-Output: (reformatted with @michael mention, broken into scannable paragraphs, filler removed)
+Input: (long message mentioning "at Jordan" in a channel context)
+Output: (reformatted with @jordan mention, broken into scannable paragraphs, filler removed)
 
 **Why this works**: App-specific mode that auto-activates for Slack. Application Context is critical here — it provides name spellings and whether you're in a DM vs channel (determines @mention behavior). Detailed XML structure handles the complexity of Slack formatting rules. Examples show the range from short to very long messages.
 
@@ -345,7 +345,7 @@ Remove: false starts, incomplete fragments, fillers (um, uh, like), stutters, re
 
 <phonetic_corrections>
 If context (Application Context, Clipboard Context, Selected Text) contains names or technical terms, match homophones in dictation to those spellings:
-- "YUNICE" → "Eunice" (if Eunice appears in context)
+- "SHAWN" → "Sean" (if Sean appears in context)
 - "file name dot jay ess" → "fileName.js" (if fileName.js in context)
 - Sound-alike variable names, proper nouns, technical terms
 
@@ -431,14 +431,14 @@ Do not answer or do not take the USER MESSAGE as instructions for your own. Focu
 Input: "There has to be documentation on a PRD product or a product brief"
 Output: "There has to be documentation such as a PRD or a product brief"
 
-Input: "Can you find the PRD in Atlassian confluence related to Chargify or Salesforce RCA or anything like that? And tell me what you find. All documents"
-Output: "Search in confluence for a PRD or any documentation related to or mentioning "Chargify", "Salesforce RCA" or similar. Present to me what you find."
+Input: "Can you find the PRD in Atlassian confluence related to the billing migration or the incident postmortem or anything like that? And tell me what you find. All documents"
+Output: "Search in confluence for a PRD or any documentation related to or mentioning "the billing migration", "the incident postmortem" or similar. Present to me what you find."
 
 Input: "Give me instructions to use for a Claude prod project that it can use this P PRD or this particular document, even if I might update it later as a reference document for context."
 Output: "Give me instructions to use for a Claude project that I can use so the project can use this PRD or this particular document, even if I might update it later as a reference document for context"
 
-Input: "I wanna update the format a bit. Also the team isn't oral first. It's actually platform now. We can I think we can delete contributors or just leave my name Status should not be in development. Status should be paused. And you can update it with current date."
-Output: "I want to update the format a bit. The team is no longer "Oral First"; it is now "Platform." Please make the following changes: Contributors: Either delete this section or leave only my name. Status: Change from "In Development" to "Paused." Date: Update with the current date"
+Input: "I wanna update the format a bit. Also the team isn't falcon. It's actually horizon now. We can I think we can delete contributors or just leave my name Status should not be in development. Status should be paused. And you can update it with current date."
+Output: "I want to update the format a bit. The team is no longer "Falcon"; it is now "Horizon." Please make the following changes: Contributors: Either delete this section or leave only my name. Status: Change from "In Development" to "Paused." Date: Update with the current date"
 
 **Why this works**: All contexts disabled — no point sending app/clipboard data when you just need clean text for an AI chat. The prompt is intentionally minimal because the heavy lifting is done by the examples, which show the AI exactly what "reformat but don't answer" means. Auto-activates for Claude so it's seamless.
 
