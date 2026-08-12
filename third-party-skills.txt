@@ -2,57 +2,60 @@
 # One URL per line. Blank lines and # comments are ignored.
 # Install all with: ./scripts/install-third-party.sh
 
-# ---- Google Workspace CLI ----
-# https://github.com/googleworkspace/cli
+# ---- gogcli (Google CLI) ----
+# https://github.com/openclaw/gogcli
+# Replaces the googleworkspace/cli (gws) skills, which were removed.
+#
+# Requires the `gog` binary:
+#   brew install openclaw/tap/gogcli
+#
+# Auth model: gogcli uses your own Google Cloud OAuth client (Desktop app type),
+# registered once with `gog auth credentials set <client_secret.json>`. Accounts
+# are then added with `gog auth add <email> --services ...` and addressed by
+# email or by alias (`gog auth alias set <alias> <email>`, then `-a <alias>`).
+#
+# Services authorized for this install:
+#   gmail, calendar, drive, docs, slides, contacts, sheets
+# Skills covering services outside that list (admin, analytics, appscript, chat,
+# classroom, forms, groups, keep, maps, meet, photos, searchconsole, sites,
+# tasks, youtube) are intentionally omitted. They would fail at call time
+# without the matching OAuth scope. Add the scope first, then the skill.
+#
+# Note: openclaw skills require --dangerously-accept-openclaw-risks; the
+# install script adds the flag automatically for openclaw URLs.
 
-# Shared
-https://github.com/googleworkspace/cli/tree/main/skills/gws-shared
-
-# Drive
-https://github.com/googleworkspace/cli/tree/main/skills/gws-drive
-https://github.com/googleworkspace/cli/tree/main/skills/gws-drive-upload
-
-# Calendar
-https://github.com/googleworkspace/cli/tree/main/skills/gws-calendar
-https://github.com/googleworkspace/cli/tree/main/skills/gws-calendar-insert
-https://github.com/googleworkspace/cli/tree/main/skills/gws-calendar-agenda
-
-# Docs
-https://github.com/googleworkspace/cli/tree/main/skills/gws-docs
-https://github.com/googleworkspace/cli/tree/main/skills/gws-docs-write
+# Core
+https://github.com/openclaw/gogcli/tree/main/.agents/skills/gog
 
 # Gmail
-https://github.com/googleworkspace/cli/tree/main/skills/gws-gmail
-https://github.com/googleworkspace/cli/tree/main/skills/gws-gmail-read
-https://github.com/googleworkspace/cli/tree/main/skills/gws-gmail-send
-https://github.com/googleworkspace/cli/tree/main/skills/gws-gmail-reply
-https://github.com/googleworkspace/cli/tree/main/skills/gws-gmail-reply-all
-https://github.com/googleworkspace/cli/tree/main/skills/gws-gmail-forward
-https://github.com/googleworkspace/cli/tree/main/skills/gws-gmail-triage
-https://github.com/googleworkspace/cli/tree/main/skills/gws-gmail-watch
+https://github.com/openclaw/gogcli/tree/main/.agents/skills/gog-gmail
 
-# People
-https://github.com/googleworkspace/cli/tree/main/skills/gws-people
+# Calendar
+https://github.com/openclaw/gogcli/tree/main/.agents/skills/gog-calendar
+
+# Drive
+https://github.com/openclaw/gogcli/tree/main/.agents/skills/gog-drive
+
+# Docs
+https://github.com/openclaw/gogcli/tree/main/.agents/skills/gog-docs
 
 # Sheets
-https://github.com/googleworkspace/cli/tree/main/skills/gws-sheets
-https://github.com/googleworkspace/cli/tree/main/skills/gws-sheets-read
-https://github.com/googleworkspace/cli/tree/main/skills/gws-sheets-append
+https://github.com/openclaw/gogcli/tree/main/.agents/skills/gog-sheets
 
 # Slides
-https://github.com/googleworkspace/cli/tree/main/skills/gws-slides
+https://github.com/openclaw/gogcli/tree/main/.agents/skills/gog-slides
 
-# Recipes
-https://github.com/googleworkspace/cli/tree/main/skills/recipe-backup-sheet-as-csv
-https://github.com/googleworkspace/cli/tree/main/skills/recipe-block-focus-time
-https://github.com/googleworkspace/cli/tree/main/skills/recipe-bulk-download-folder
-https://github.com/googleworkspace/cli/tree/main/skills/recipe-compare-sheet-tabs
-https://github.com/googleworkspace/cli/tree/main/skills/recipe-create-gmail-filter
-https://github.com/googleworkspace/cli/tree/main/skills/recipe-create-presentation
-https://github.com/googleworkspace/cli/tree/main/skills/recipe-create-shared-drive
-https://github.com/googleworkspace/cli/tree/main/skills/recipe-create-vacation-responder
-https://github.com/googleworkspace/cli/tree/main/skills/recipe-email-drive-link
-https://github.com/googleworkspace/cli/tree/main/skills/recipe-find-free-time
+# Contacts / People
+https://github.com/openclaw/gogcli/tree/main/.agents/skills/gog-contacts
+https://github.com/openclaw/gogcli/tree/main/.agents/skills/gog-people
+
+# Workflows (cover what the former gws recipe-* skills did)
+https://github.com/openclaw/gogcli/tree/main/.agents/skills/gog-inbox-triage
+https://github.com/openclaw/gogcli/tree/main/.agents/skills/gog-meeting-prep
+https://github.com/openclaw/gogcli/tree/main/.agents/skills/gog-weekly-digest
+https://github.com/openclaw/gogcli/tree/main/.agents/skills/gog-save-attachments
+https://github.com/openclaw/gogcli/tree/main/.agents/skills/gog-drive-audit
+https://github.com/openclaw/gogcli/tree/main/.agents/skills/gog-contacts-cleanup
 
 # ---- Peekaboo (macOS automation) ----
 # https://github.com/openclaw/Peekaboo
