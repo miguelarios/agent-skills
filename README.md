@@ -69,6 +69,7 @@ Add a new entry by appending its URL to `third-party-skills.txt` (or removing an
 | Skill | Description |
 |-------|-------------|
 | [agent-skill-creator](skills/agent-skill-creator/) | Create and iterate on agent skills |
+| [anti-ai-slop](skills/anti-ai-slop/) | Banlist of AI-tell words, phrases, punctuation, and structural tics |
 | [openclaw-skill-creator](skills/openclaw-skill-creator/) | Create skills using the OpenClaw framework |
 | [recipe-manager](skills/recipe-manager/) | Manage recipes in Obsidian |
 | [superwhisper-custom-mode](skills/superwhisper-custom-mode/) | Configure SuperWhisper custom modes |
