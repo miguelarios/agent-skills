@@ -55,13 +55,45 @@ def _parse_simple_frontmatter(frontmatter_text: str) -> Optional[dict[str, str]]
         value = value.strip()
         if not key:
             return None
-        if (value.startswith('"') and value.endswith('"')) or (
+        if value in {"|", "|-", "|+", ">", ">-", ">+"}:
+            value = ""
+        elif (value.startswith('"') and value.endswith('"')) or (
             value.startswith("'") and value.endswith("'")
         ):
             value = value[1:-1]
         parsed[key] = value
         current_key = key
     return parsed
+
+
+def _validate_description_scalar(frontmatter_text: str) -> Optional[str]:
+    """Reject YAML-unsafe plain descriptions before selecting a parser."""
+    for raw_line in frontmatter_text.splitlines():
+        if raw_line[:1].isspace() or ":" not in raw_line:
+            continue
+
+        key, raw_value = raw_line.split(":", 1)
+        if key.strip() != "description":
+            continue
+
+        value = raw_value.strip()
+        if not value or value[0] in {"|", ">"}:
+            return None
+
+        is_quoted = (
+            len(value) >= 2
+            and value[0] in {'"', "'"}
+            and value[-1] == value[0]
+        )
+        if not is_quoted and ": " in value:
+            return (
+                "Description contains an unquoted ': ' sequence, which breaks YAML "
+                "frontmatter. Quote the entire description, use a block scalar, or "
+                "rewrite the sentence without ': '."
+            )
+        return None
+
+    return None
 
 
 def validate_skill(skill_path):
@@ -80,6 +112,11 @@ def validate_skill(skill_path):
     frontmatter_text = _extract_frontmatter(content)
     if frontmatter_text is None:
         return False, "Invalid frontmatter format"
+
+    description_error = _validate_description_scalar(frontmatter_text)
+    if description_error:
+        return False, description_error
+
     if yaml is not None:
         try:
             frontmatter = yaml.safe_load(frontmatter_text)

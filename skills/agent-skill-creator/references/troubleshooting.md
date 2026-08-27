@@ -80,6 +80,7 @@ Common issues and solutions, organized by symptom.
 |-------|-----|
 | "Could not find SKILL.md" | Rename to exactly `SKILL.md` (case-sensitive) |
 | "Invalid frontmatter" | Check `---` delimiters, close quotes, valid YAML |
+| "Description contains an unquoted ': ' sequence" | Quote the entire description, use a block scalar, or rewrite without `: ` |
 | "Invalid skill name" | Use kebab-case: `my-cool-skill` not `My Cool Skill` |
 | "Description contains angle brackets" | Remove all `<>` from description |
 | "Name too long" | Max 64 characters |

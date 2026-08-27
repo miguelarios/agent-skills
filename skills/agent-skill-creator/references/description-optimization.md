@@ -35,6 +35,7 @@ description: Use when implementing any feature or bugfix, before writing impleme
 - Write in third person (injected into system prompt)
 - Under 1024 characters (aim for under 500 when possible)
 - No XML angle brackets (`<>`)
+- Quote the entire value or use a block scalar when the description contains `: ` (colon followed by a space); an unquoted `: ` breaks YAML frontmatter
 - Include specific tasks users might say
 - Mention file types if relevant
 - Err on the side of being "pushy" — explicitly list contexts where the skill applies
