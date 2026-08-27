@@ -1,6 +1,6 @@
 ---
 name: yt-dlp
-description: Download YouTube videos, audio only, transcripts, subtitles, or playlists with quality control. Use when user asks to: (1) "download from YouTube", "get YouTube audio", "extract transcript/subtitles", "download playlist", or (2) mentions YouTube URL with any media extraction need. Handles format selection, playlist batching, and metadata embedding.
+description: Download YouTube videos, audio only, transcripts, subtitles, or playlists with quality control. Use when the user asks to "download from YouTube", "get YouTube audio", "extract transcript/subtitles", or "download playlist", or mentions a YouTube URL with any media extraction need. Handles format selection, playlist batching, and metadata embedding.
 ---
 
 # yt-dlp
