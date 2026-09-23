@@ -66,3 +66,17 @@ https://github.com/openclaw/Peekaboo/tree/main/skills/peekaboo
 # ---- Product Manager Skills (Dean Peters) ----
 # https://github.com/deanpeters/Product-Manager-Skills
 https://github.com/deanpeters/Product-Manager-Skills/tree/main/skills/problem-statement
+
+# ---- QMD (local markdown semantic search) ----
+# https://github.com/tobi/qmd  (MIT)
+#
+# Requires the `qmd` binary:
+#   npm install -g @tobilu/qmd
+#
+# Heads-up on versions: this URL installs the repo's SKILL.md, which is pinned
+# at skill version 2.2.0 and lags the CLI. The installed qmd CLI ships its own
+# version-matched instructions -- run `qmd skill show` (or `qmd skills get qmd
+# --full`) for those. If the repo copy ever drifts far enough to give wrong
+# flags, prefer `qmd skill install --global`, which writes a thin bootstrap that
+# loads the CLI's instructions at runtime instead of a frozen copy.
+https://github.com/tobi/qmd/tree/main/skills/qmd
