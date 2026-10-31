@@ -141,7 +141,28 @@ Ensure both sets have proportional mixes of should-trigger and should-not-trigge
 4. **Repeat** until train set passes or improvement plateaus.
 5. **Select best iteration** by validation pass rate (not train rate).
 
-Five iterations is usually enough. Run each query 3x to account for nondeterminism and compute trigger rates. Use `scripts/generate_report.py` to visualize results as an HTML report showing per-query pass/fail across iterations with train/test split coloring.
+Five iterations is usually enough. Run each query 3x to account for nondeterminism and compute trigger rates. `scripts/generate_report.py` renders an HTML report (per-query pass/fail across iterations, train/test coloring); `run_loop.py` writes it for you.
+
+### Running it: the scripts and runners
+
+```bash
+python -m scripts.run_loop --eval-set evals.json --skill-path <skill> --runner claude|hermes \
+  [--model ID] [--max-iterations 5] [--runs-per-query 3] [--holdout 0.4] \
+  [--results-dir DIR] [--report none|auto|PATH] [--no-open] [--verbose]
+python -m scripts.run_eval --eval-set evals.json --skill-path <skill> --runner ...   # one pass, JSON out
+python -m scripts.improve_description --eval-results r.json --skill-path <skill> --runner ...
+```
+
+`--dry-run` (alias for `--runner dry`) uses a keyword-overlap stub: no LLM, no network. It exists to check plumbing and file formats; its scores mean nothing.
+
+| Runner | How "triggered" is decided | Fidelity | Cost |
+|---|---|---|---|
+| `claude` | Writes a temporary command file under `.claude/commands/` so the description appears in the skill list, runs `claude -p` with the raw query, and watches the stream for a `Skill` or `Read` tool call naming it. | High: observes the real decision. Run from the project root. | One agent run per query per repeat. |
+| `hermes` | Runs `hermes chat -Q --oneshot` once per query with a prompt that lists the candidate skill (plus optional siblings via `--distractor-dir`) and asks which single skill it would load first, answering as JSON. Triggered when the answer names the candidate. | Medium: a simulated decision, not an observed `skill_view` call. The model knows it is being asked and does no task work, so it tends to over-trigger on borderline queries. | One short completion per query per repeat. |
+
+Honest limits of the `hermes` runner: good for ranking descriptions against each other and spotting dead phrasing; poor as an absolute trigger rate. Without `--distractor-dir` the candidate has no competition, so should-not-trigger queries are easier than in real use; point it at your skills directory for a realistic listing. Real Hermes behavior also depends on the toolsets and skill-visibility rules (`requires_tools`, `fallback_for_tools`) in effect, which the simulation ignores. Before trusting a final description, spot-check 3-5 queries in a real session.
+
+If neither CLI is available (claude.ai), write the queries anyway, reason through each against the description, and have the user try a few in the real runtime.
 
 ### Step 4: Verify with Fresh Queries
 
