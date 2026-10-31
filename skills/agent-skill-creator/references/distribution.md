@@ -11,6 +11,16 @@ scripts/package_skill.py <path/to/skill-folder> ./dist
 
 The script validates the skill first, then creates a `.skill` file (zip archive with `.skill` extension). Symlinks are rejected for security.
 
+### Targets
+
+```bash
+scripts/package_skill.py <skill> --target default     # package as is; extra frontmatter keys only warn
+scripts/package_skill.py <skill> --target claude-ai   # for claude.ai / Skills API uploads
+scripts/package_skill.py <skill> --target spec        # same stripping, for any strict consumer
+```
+
+claude.ai uploads, the Skills API, and Anthropic's packaging script hard-reject non-spec top-level frontmatter keys. `claude-ai` and `spec` remove them from the packaged copy of SKILL.md only (the source is never edited), print the removed keys, and re-validate the result against the spec. Nested `metadata.*` is kept. Anything removed loses its runtime behavior (e.g. Hermes `required_environment_variables`), so keep the requirement in `compatibility` and a Prerequisites section too. See `frontmatter-fields.md`.
+
 The resulting file can be:
 - Uploaded to AI platforms via skills directories
 - Installed in local skills directories
@@ -24,7 +34,7 @@ Before packaging, validate your skill against the specification:
 scripts/quick_validate.py <path/to/skill-folder>
 ```
 
-Checks frontmatter format, naming conventions, description constraints, and file organization.
+Checks frontmatter format, name rules (and that it matches the directory), description and compatibility limits, and non-spec top-level keys (warnings by default; errors with `--target claude-ai|spec`). Exit codes: 0 valid, 1 errors, 2 usage.
 
 ## Hosting on GitHub
 

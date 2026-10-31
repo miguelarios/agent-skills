@@ -64,6 +64,19 @@ def calculate_stats(values: list[float]) -> dict:
     }
 
 
+def _eval_dirs(root: Path) -> list[Path]:
+    """Eval directories: any subdirectory holding config dirs (eval-* by convention, any name accepted)."""
+    out = []
+    for d in sorted(root.iterdir()):
+        if not d.is_dir() or d.name in ("runs", "inputs", "skill-snapshot"):
+            continue
+        if d.name.startswith("eval-") or any(
+            c.is_dir() and ((c / "grading.json").exists() or list(c.glob("run-*"))) for c in d.iterdir()
+        ):
+            out.append(d)
+    return out
+
+
 def load_run_results(benchmark_dir: Path) -> dict:
     """
     Load all run results from a benchmark directory.
@@ -75,7 +88,7 @@ def load_run_results(benchmark_dir: Path) -> dict:
     runs_dir = benchmark_dir / "runs"
     if runs_dir.exists():
         search_dir = runs_dir
-    elif list(benchmark_dir.glob("eval-*")):
+    elif _eval_dirs(benchmark_dir):
         search_dir = benchmark_dir
     else:
         print(f"No eval directories found in {benchmark_dir} or {benchmark_dir / 'runs'}")
@@ -83,7 +96,7 @@ def load_run_results(benchmark_dir: Path) -> dict:
 
     results: dict[str, list] = {}
 
-    for eval_idx, eval_dir in enumerate(sorted(search_dir.glob("eval-*"))):
+    for eval_idx, eval_dir in enumerate(_eval_dirs(search_dir)):
         metadata_path = eval_dir / "eval_metadata.json"
         if metadata_path.exists():
             try:
@@ -102,14 +115,17 @@ def load_run_results(benchmark_dir: Path) -> dict:
             if not config_dir.is_dir():
                 continue
             # Skip non-config directories (inputs, outputs, etc.)
-            if not list(config_dir.glob("run-*")):
+            run_dirs = sorted(config_dir.glob("run-*"))
+            if not run_dirs and (config_dir / "grading.json").exists():
+                run_dirs = [config_dir]  # flat layout: <eval>/<config>/grading.json is run 1
+            if not run_dirs:
                 continue
             config = config_dir.name
             if config not in results:
                 results[config] = []
 
-            for run_dir in sorted(config_dir.glob("run-*")):
-                run_number = int(run_dir.name.split("-")[1])
+            for run_dir in run_dirs:
+                run_number = 1 if run_dir is config_dir else int(run_dir.name.split("-")[1])
                 grading_file = run_dir / "grading.json"
 
                 if not grading_file.exists():

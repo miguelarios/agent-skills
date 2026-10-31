@@ -93,3 +93,13 @@ Common issues and solutions, organized by symptom.
 - **Ambiguous language** — Replace "validate things properly" with specific checks
 - **Too many options** — Provide one default approach, not five alternatives
 - **Missing "why"** — Explain reasoning; agents follow instructions better when they understand the purpose
+
+## claude.ai upload says "Unexpected key(s) in SKILL.md frontmatter"
+
+The upload path rejects every top-level key outside `name`, `description`, `license`, `compatibility`, `metadata`, `allowed-tools`. Run `scripts/quick_validate.py <skill> --target claude-ai` to list them, then either move them under `metadata.<platform>` or build with `scripts/package_skill.py <skill> --target claude-ai`, which strips them from the packaged copy. A dotted key like `metadata.openclaw:` is a common cause; indent it under `metadata:`.
+
+## Trigger optimization scores look wrong
+
+- `--dry-run` scores are meaningless by design.
+- `--runner hermes` simulates skill selection; compare descriptions with it, do not read the rate as ground truth. Add `--distractor-dir` so the skill has competition.
+- `--runner claude` must run from the project root so `.claude/commands/` is found, and cannot run on claude.ai.

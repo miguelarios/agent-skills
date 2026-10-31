@@ -1,6 +1,6 @@
 ---
 name: markitdown
-description: 'Convert files to Markdown for LLM processing. Supports PDF, DOCX, XLSX, PPTX, images (OCR), audio (transcription), HTML, EPUB, CSV, JSON, XML, YouTube URLs, and ZIP archives. Use when extracting text from documents, transcribing audio, OCR on images, or preparing files for RAG systems. CLI tool: markitdown <file>'
+description: 'Convert files to Markdown for LLM processing. Supports PDF, DOCX, XLSX, PPTX, images (OCR), audio (transcription), HTML, EPUB, CSV, JSON, XML, YouTube URLs, and ZIP archives. Use when extracting text from documents, transcribing audio, OCR on images, or preparing files for RAG systems. CLI tool: markitdown FILE'
 metadata:
   installed: true
   install_command: uv tool install 'markitdown[all]'

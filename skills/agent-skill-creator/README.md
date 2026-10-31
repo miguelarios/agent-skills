@@ -1,4 +1,4 @@
-# skill-creator
+# agent-skill-creator
 
 An agent-agnostic skill for creating, testing, and packaging Agent Skills — the open standard for extending AI agent capabilities.
 
@@ -15,12 +15,14 @@ skill-creator/
 │   └── analyzer.md
 ├── assets/
 │   └── eval_review.html
+├── tests/                      (unit + offline smoke tests)
 ├── eval-viewer/
 │   ├── generate_review.py
 │   └── viewer.html
 ├── references/
 │   ├── description-optimization.md
 │   ├── distribution.md
+│   ├── frontmatter-fields.md
 │   ├── schemas.md
 │   ├── skill-patterns.md
 │   ├── testing-methodology.md
@@ -30,15 +32,18 @@ skill-creator/
     ├── aggregate_benchmark.py
     ├── generate_report.py
     ├── init_skill.py
-    ├── package_skill.py
-    └── quick_validate.py
+    ├── package_skill.py       (--target default|claude-ai|spec)
+    ├── quick_validate.py      (--target default|claude-ai|spec)
+    ├── run_eval.py / run_loop.py / improve_description.py
+    ├── runners.py             (claude | hermes | dry runners)
+    └── utils.py
 ```
 
 ## File Provenance
 
-### SKILL.md (325 lines — original)
+### SKILL.md (rewritten as a driven loop)
 
-The procedural core. Covers core principles, anatomy, frontmatter spec, progressive disclosure patterns, skill creation process (7 steps), and a quick checklist. Stays under 500 lines by pushing depth into reference files.
+Modeled on Anthropic's skill-creator: capture intent, draft, test prompts, with-skill and baseline runs, grading, benchmark, viewer, improve, description optimization, packaging. Runtime sections cover subagents vs none, display vs headless, Hermes, Claude Code, claude.ai. Original principles, patterns, scripts guidance and troubleshooting live in references/.
 
 **Sources synthesized:**
 - **Anthropic built-in skill-creator** — "explain the why" writing philosophy, iterative improvement guidance, generalize-don't-overfit principle
@@ -187,6 +192,13 @@ Generates HTML reports from description optimization loop output with per-query 
 **Source:** From Anthropic's built-in skill-creator (`scripts/generate_report.py`). One change: "Claude tests different versions" → "the optimizer tests different versions" for agent-agnosticism.
 
 ---
+
+### New in this revision
+
+- `references/frontmatter-fields.md`: field table by runtime and upload safety, design rule, examples.
+- `scripts/quick_validate.py`, `scripts/package_skill.py`: `--target` modes; non-spec keys warn by default, error for `claude-ai`/`spec`, and are stripped from the packaged copy only.
+- `scripts/run_eval.py`, `run_loop.py`, `improve_description.py`, `utils.py`: ported from Anthropic's skill-creator (Apache-2.0) with a pluggable runner (`runners.py`).
+- `scripts/aggregate_benchmark.py`: also accepts the flat `<eval>/<config>/grading.json` layout and any eval directory name.
 
 ## Sources Referenced
 

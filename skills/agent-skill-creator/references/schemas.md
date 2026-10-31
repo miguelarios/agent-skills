@@ -1,6 +1,8 @@
 # JSON Schemas
 
-This document defines the JSON schemas used by skill-creator.
+This document defines the JSON schemas used by agent-skill-creator.
+
+Note on naming: `evals.json` entries may carry `expectations` (shown below) or `assertions`; `eval_metadata.json` uses `assertions`. Both are lists of plain-language statements. `grading.json` always uses `expectations[].{text, passed, evidence}`.
 
 ---
 
@@ -428,3 +430,67 @@ Output from post-hoc analyzer. Located at `<grading-dir>/analysis.json`.
   }
 }
 ```
+
+
+---
+
+## eval_metadata.json
+
+Per-eval file at `<workspace>/iteration-N/eval-<name>/eval_metadata.json`. The viewer reads `prompt` and `eval_id`; the aggregator reads `eval_id`.
+
+```json
+{"eval_id": 0, "eval_name": "top-months-chart", "prompt": "The user's task prompt", "assertions": ["Output contains a PNG chart"]}
+```
+
+---
+
+## trigger eval set (description optimization)
+
+Input to `run_eval.py` / `run_loop.py`. Also what `assets/eval_review.html` exports.
+
+```json
+[
+  {"query": "ok so my boss sent me Q4 sales FINAL v2.xlsx and wants a margin column", "should_trigger": true},
+  {"query": "write a script that uploads csv rows to postgres", "should_trigger": false}
+]
+```
+
+## run_eval.py output
+
+```json
+{
+  "skill_name": "my-skill",
+  "description": "description under test",
+  "runner": "claude",
+  "results": [
+    {"query": "...", "should_trigger": true, "trigger_rate": 0.67, "triggers": 2, "runs": 3, "pass": true}
+  ],
+  "summary": {"total": 20, "passed": 17, "failed": 3}
+}
+```
+
+A should-trigger query passes when `trigger_rate >= --trigger-threshold` (default 0.5); a should-not-trigger query passes when it is below it.
+
+## run_loop.py output (results.json)
+
+```json
+{
+  "exit_reason": "all_passed (iteration 3)",
+  "original_description": "...",
+  "best_description": "...",
+  "best_score": "7/8",
+  "best_train_score": "11/12",
+  "best_test_score": "7/8",
+  "final_description": "...",
+  "iterations_run": 3,
+  "holdout": 0.4,
+  "train_size": 12,
+  "test_size": 8,
+  "history": [
+    {"iteration": 1, "description": "...", "train_passed": 9, "train_total": 12, "test_passed": 5, "test_total": 8,
+     "train_results": [], "test_results": []}
+  ]
+}
+```
+
+`best_description` is chosen by held-out test score (train score when `--holdout 0`). The improver never sees test results.

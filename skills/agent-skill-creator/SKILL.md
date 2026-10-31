@@ -1,325 +1,265 @@
 ---
 name: agent-skill-creator
-description: Create, update, test, or package agent skills. Use when designing, structuring, or packaging skills with scripts, references, and assets. Triggers include "create a skill", "turn this into a skill", "capture this workflow", "make this reusable", "package this as a skill", "improve this skill", "update my skill", or any request to build reusable agent capabilities. Covers planning, description optimization, testing, troubleshooting, distribution, and iteration. Agent-agnostic.
+description: Create new agent skills, improve existing ones, test them with evals, optimize their descriptions for triggering, and package them for upload. Use whenever the user wants to create a skill, turn a workflow or conversation into a skill, capture something reusable, edit or fix a skill, run evals or benchmarks on a skill, check why a skill does not trigger, validate frontmatter, or package a skill for claude.ai, Claude Code, Hermes or another runtime, even if they never say "skill creator".
+compatibility: Python 3.9+ for the bundled scripts (PyYAML optional). Subagents, a browser, and the claude or hermes CLI are optional; the workflow degrades without them.
 ---
 
-# Skill Creator
+# Agent Skill Creator
 
-Guide for creating effective agent skills. Skills are platform-agnostic and work across different AI assistants and environments.
+Create a skill, test it against realistic prompts, review results with the user, improve, repeat, then optimize the description and package. Skills follow the open [Agent Skills spec](https://agentskills.io/specification) and should run on any runtime; runtime-specific behavior is isolated in the "Runtime notes" section.
 
-## About Skills
+The loop (enter wherever the user already is):
 
-Skills are modular, self-contained packages that extend an AI assistant's capabilities with specialized knowledge, workflows, and tools. They transform a general-purpose assistant into a specialized agent equipped with procedural knowledge no model fully possesses.
+1. Capture intent, interview, draft the skill
+2. Write 2-3 realistic test prompts
+3. Run each prompt with the skill and against a baseline
+4. Grade, aggregate, review with the user
+5. Improve, rerun in a new iteration
+6. Optimize the description
+7. Validate and package
 
-**What skills provide:**
-1. **Specialized workflows** — multi-step procedures for specific domains
-2. **Tool integrations** — instructions for working with specific file formats, APIs, or MCP servers
-3. **Domain expertise** — company-specific knowledge, schemas, business logic
-4. **Bundled resources** — scripts, references, and assets for complex and repetitive tasks
+Figure out where the user is. "Turn this into a skill" means start at 1 using the conversation. "My skill misfires" means start at 6. "Here's my draft" means start at 2. If the user says skip evals and just iterate by feel, do that. Evals earn their cost on skills with checkable outputs (file transforms, extraction, fixed workflows); subjective skills (voice, design) mostly need human review.
 
-**Skills work identically across** AI platforms, desktop and web interfaces, and API-based integrations. Create once, use everywhere.
+Talk to the user at their level. Terms like "assertion", "benchmark", and "JSON" need a one-line explanation unless they have shown fluency.
 
-## Core Principles
+## 1. Create
 
-### Concise is Key
+### Capture intent
 
-The context window is a public good. Skills share it with the system prompt, conversation history, other skills' metadata, and the user's request.
+Mine the current conversation first: tools used, step sequence, corrections the user made, input and output formats. Then confirm and fill gaps:
 
-**Default assumption: the AI assistant is already very smart.** Only add context it doesn't already have. Challenge each piece: "Does the AI really need this?" and "Does this paragraph justify its token cost?"
+1. What should the skill enable the agent to do?
+2. What would a user say or do that should trigger it?
+3. What is the expected output format?
+4. Which tools, CLIs, MCP servers, or API keys does it need? (drives frontmatter, see below)
+5. Does it warrant test cases? Suggest a default from the skill type; the user decides.
 
-Prefer concise examples over verbose explanations.
+### Interview and research
 
-### Set Appropriate Degrees of Freedom
+Ask about edge cases, input and output formats, example files, success criteria, and dependencies. Do not write test prompts until this is settled. If research helps (existing skills, docs, similar workflows) do it in parallel via subagents when available, else inline, and arrive with context so the user has less to answer.
 
-Match specificity to the task's fragility:
+### Initialize
 
-- **High freedom** (text-based instructions): Multiple approaches valid, decisions depend on context.
-- **Medium freedom** (pseudocode or parameterized scripts): Preferred pattern exists, some variation acceptable.
-- **Low freedom** (specific scripts, few parameters): Operations fragile, consistency critical, exact sequence required.
+```bash
+python scripts/init_skill.py <skill-name> --path <output-dir> [--resources scripts,references,assets] [--examples]
+```
 
-Think of the AI assistant exploring a path: a narrow bridge with cliffs needs guardrails (low freedom), while an open field allows many routes (high freedom).
+Skip it when editing an existing skill. Update an existing skill in place: keep its `name` and directory name unchanged (no `-v2`). If the installed copy is read-only, copy it to a writable location, edit there, and package from the copy.
 
-### Favor Procedures Over Declarations
+### Write SKILL.md
 
-Teach the AI assistant *how to approach* a class of problems, not *what to produce* for a specific instance. A skill that says "Read the schema from references/schema.yaml, join tables using the `_id` foreign key convention, apply filters as WHERE clauses" generalizes across queries. A skill that says "Join orders to customers on customer_id and sum amount" only works for that one task.
+- **name**: kebab-case, equals the directory name, max 64 chars.
+- **description**: the main triggering mechanism. Say what the skill does and when to use it, with the contexts and phrasings that should match. Agents tend to under-trigger, so lean slightly pushy: "Use whenever the user mentions X, Y, or Z, even if they do not ask for it by name." All "when to use" information belongs here; the body is not read until after triggering. Third person, no angle brackets, under 1024 chars. Details: `references/description-optimization.md`.
+- **compatibility** and other frontmatter: see "Frontmatter" below.
+- **body**: imperative instructions that explain why. Teach an approach that generalizes, not answers for the test cases. Heavy ALWAYS/NEVER in caps is a smell; give the reasoning instead.
 
-Skills can still include specific details — output templates, constraints, tool-specific instructions — but the *approach* should generalize even when individual details are specific.
-
-### Design Coherent Units
-
-Scope a skill like you'd scope a function: it should encapsulate a coherent unit of work that composes well with other skills. Too narrow forces multiple skills to load for a single task (overhead + conflicting instructions). Too broad makes triggering imprecise. A skill for querying a database and formatting results may be one coherent unit; a skill that also covers database administration is probably trying to do too much.
-
-## Anatomy of a Skill
+Structure for progressive disclosure: metadata always loaded (~100 words), body loaded on trigger (aim under 500 lines), bundled files loaded or executed as needed. When the body nears the limit, move detail to `references/` and say exactly when to read each file. Keep references one level deep; give files over 100 lines a table of contents. For multi-variant skills (several clouds, frameworks, domains) split by variant so only the relevant file is read.
 
 ```
 skill-name/
-├── SKILL.md (required)
-│   ├── YAML frontmatter (name + description, required)
-│   └── Markdown instructions
-└── Bundled Resources (optional)
-    ├── scripts/      — Executable code (Python/Bash/etc.)
-    ├── references/   — Documentation loaded into context as needed
-    └── assets/       — Files used in output (templates, icons, fonts)
+├── SKILL.md        required: frontmatter + instructions
+├── scripts/        deterministic or repeated code
+├── references/     docs loaded on demand
+├── assets/         templates and files used in output
+└── evals/          evals.json test prompts (optional but recommended)
 ```
 
-### Three-Level Progressive Disclosure
+Do not add README.md, CHANGELOG.md or install guides inside the skill. Consult `references/skill-patterns.md` for structure patterns (workflow, MCP-enhanced, iterative refinement) and `references/writing-scripts.md` before bundling scripts (non-interactive, helpful errors, structured output).
 
-1. **Metadata** (name + description) — Always in context (~100 words). The AI assistant reads this to decide whether to load the skill.
-2. **SKILL.md body** — Loaded when skill triggers. Target under 500 lines / 5k words.
-3. **Bundled resources** — Loaded as needed. Scripts execute without consuming context; references load only when relevant.
+**Tool-dependent skills:** before drafting, call each tool the skill will rely on once with a realistic query and note what it actually returns (empty results, blocked routes, truncation). Write the procedure around the routes that worked and keep observed quirks in a tool-notes reference inside the skill being built; a skill drafted from tool schemas alone sends every run into the same dead end. Name tools by their exact runtime names (Hermes deferred MCP tools: `mcp__<server>__<tool>`, called via `tool_call`) and say explicitly when the skill's preferred tool overrides a general environment default; otherwise runs silently fall back to the default built-in tools. Put the same tool instructions inside any brief the skill hands to subagents, since children do not read the parent skill.
 
-### SKILL.md
+Principle of least surprise: no malware, exfiltration, or misleading behavior; the skill's contents should match what its description promises. Role-play skills are fine.
 
-- **Frontmatter** (YAML): `name` and `description` fields. This is the *only* thing the AI assistant reads to decide whether to use the skill, so the description must be clear and comprehensive.
-- **Body** (Markdown): Instructions and guidance. Only loaded *after* the skill triggers.
+### Frontmatter
 
-### Bundled Resources
+Default to the six spec fields: `name`, `description`, `license`, `compatibility`, `metadata`, `allowed-tools` (experimental). Anthropic's claude.ai upload, the Skills API, and its packaging script reject any other top-level key. Claude Code and Hermes accept extra fields, and some buy real behavior.
 
-**Scripts** (`scripts/`): Executable code for tasks needing deterministic reliability or frequently rewritten logic. Token-efficient — can execute without loading into context. See `references/writing-scripts.md` for how to design scripts that agents can use effectively.
+Rules of thumb:
 
-**References** (`references/`): Documentation loaded as-needed to inform the AI assistant's process. Use for schemas, API docs, domain knowledge, policies, detailed guides. Keep SKILL.md lean by moving detailed content here. For files >10k words, include grep patterns in SKILL.md. Avoid duplicating content between SKILL.md and references.
+- Put platform extras under `metadata.<platform>` (e.g. `metadata.hermes.tags`). Nested metadata is accepted everywhere.
+- Use a top-level platform key only when it buys behavior that nothing else provides, such as Hermes `required_environment_variables` (prompts for missing keys and passes them to sandboxes) or Claude Code `disable-model-invocation`.
+- For a claude.ai upload, build with `package_skill.py --target claude-ai`. It strips non-spec top-level keys from the packaged copy only and prints what it removed. The source stays as written.
+- Say what the skill needs in three places so it degrades gracefully: the `compatibility` text (every runtime), the runtime-specific field (when targeting that runtime), and a **Prerequisites** section in the body with a fallback when the tool or key is missing.
 
-**Assets** (`assets/`): Files used in output, not loaded into context. Templates, images, boilerplate code, fonts. Example: `assets/slides_template.pptx`.
+Full field table, examples, and the tools-needed pattern: `references/frontmatter-fields.md`.
 
-### What NOT to Include
+## 2. Write test prompts
 
-Only include files that directly support the skill's function. Do not create README.md, CHANGELOG.md, INSTALLATION_GUIDE.md, or other auxiliary documentation. The skill should contain only what an AI agent needs to do the job.
+Write 2-3 realistic prompts, the kind a real user would type, with concrete detail (file paths, column names, context). Share them: "Here are a few test cases. Do these look right, or should I add more?" Save to `evals/evals.json` without assertions yet:
 
-## YAML Frontmatter
-
-The frontmatter is how the AI assistant decides whether to load your skill. Get this right.
-
-### Required Fields
-
-```yaml
----
-name: your-skill-name
-description: What it does. Use when [specific trigger phrases].
----
+```json
+{
+  "skill_name": "example-skill",
+  "evals": [
+    {"id": 1, "prompt": "User's task prompt", "expected_output": "What success looks like", "files": []}
+  ]
+}
 ```
 
-**name** (required):
-- kebab-case only (lowercase letters, digits, hyphens)
-- Must match folder name
-- Max 64 characters, no consecutive hyphens, no leading/trailing hyphens
-- No XML angle brackets (`<>`)
+Full schema (including assertions): `references/schemas.md`.
 
-**description** (required):
-- Must include both *what the skill does* and *when to use it*
-- Max 1024 characters, no XML angle brackets
-- Include specific trigger phrases users would say
-- Mention file types if relevant
-- Write in third person (injected into system prompt)
+## 3. Run and evaluate
 
-**Good descriptions:**
-```yaml
-description: Analyzes Figma design files and generates developer handoff documentation. Use when user uploads .fig files, asks for "design specs", "component documentation", or "design-to-code handoff".
+One continuous sequence; do not stop partway. Do not hand off to a separate testing skill.
 
-description: End-to-end customer onboarding workflow for PayFlow. Handles account creation, payment setup, and subscription management. Use when user says "onboard new customer", "set up subscription", or "create PayFlow account".
+Workspace: a sibling of the skill directory, `<skill-name>-workspace/`. One directory per iteration, one per eval (named `eval-<descriptive-name>`), one per configuration:
+
+```
+my-skill-workspace/
+├── skill-snapshot/                  copy of the old skill (improvements only)
+├── iteration-1/
+│   ├── eval-top-months-chart/
+│   │   ├── eval_metadata.json
+│   │   ├── with_skill/{outputs/, timing.json, grading.json}
+│   │   └── without_skill/{...}      or old_skill/ when improving
+│   ├── benchmark.json
+│   └── benchmark.md
+└── iteration-2/ ...
 ```
 
-**Bad descriptions:**
-```yaml
-description: Helps with projects.
-description: Creates sophisticated multi-page documentation systems.
+Create directories as you go. Write `eval_metadata.json` per eval (assertions may be empty at first), using a descriptive `eval_name`; recreate it when prompts change.
+
+```json
+{"eval_id": 0, "eval_name": "top-months-chart", "prompt": "...", "assertions": []}
 ```
 
-**For in-depth description optimization guidance**, including the critical insight about why descriptions should never summarize workflow, and a structured eval loop with train/validation splits, see `references/description-optimization.md`. For reviewing trigger eval queries with users, use the interactive template at `assets/eval_review.html`.
+### Step 1: launch every run in the same turn
 
-### Optional Fields
+If the runtime has subagents, spawn with-skill and baseline runs together, so they finish at about the same time. Each run is a fresh agent given only its task:
 
-- **license**: For open-source skills (e.g., `MIT`, `Apache-2.0`)
-- **allowed-tools**: Restrict tool access (e.g., `"Bash(python:*) WebFetch"`) — experimental, support varies by client
-- **compatibility**: Environment requirements, 1-500 characters (e.g., `"Requires Python 3.12+ and uv"`)
-- **metadata**: Custom key-value pairs (`author`, `version`, `mcp-server`)
-
-### Security Restrictions
-
-- **No XML angle brackets** (`<>`) in frontmatter — it appears in the system prompt and could inject instructions
-- **Avoid reserved platform names** in skill names
-
-## Progressive Disclosure Patterns
-
-Keep SKILL.md under 500 lines. Split into reference files when approaching this limit, and clearly describe *when* to read each file — "Read references/api-errors.md if the API returns a non-200 status" is better than "see references/ for details."
-
-**Pattern 1 — High-level guide with references:**
-```markdown
-## Advanced features
-- **Form filling**: See references/forms.md for complete guide
-- **API reference**: See references/api.md for all methods
+```
+Execute this task:
+- Skill path: <path or "none">
+- Task: <eval prompt>
+- Input files: <files or "none">
+- Save outputs to: <workspace>/iteration-N/eval-<name>/with_skill/outputs/
+- Outputs to save: <what the user cares about>
 ```
 
-**Pattern 2 — Domain-specific organization:**
+Add to every run prompt:
+
+- **A run log.** Ask each run to write `run_log.md` (tools actually called, decisions, fallbacks) and to end with "problems with the skill instructions". Self-reported friction (ambiguous steps, tools the skill named but the run could not call) is the fastest improvement signal, and checking which tools were really used catches a skill that silently falls back to defaults.
+- **A stand-in for user interaction.** Eval children cannot message the user. If the skill can ask a clarifying question, tell the run to write the exact question to `followup.md` and stop (when testing the ask itself) or log it and assume the likely answer (when testing the rest). Otherwise the run guesses silently and the ask behavior is never tested.
+- **An ambiguous prompt** among the evals when the skill is supposed to ask before acting, so over-asking and under-asking are both visible.
+
+Baselines: for a **new** skill, no skill at all (`without_skill/`). For an **improvement**, the previous version: before editing, `cp -r <skill> <workspace>/skill-snapshot/` and point the baseline at the snapshot (`old_skill/`).
+
+Without subagents, see "Runtime notes".
+
+### Step 2: draft assertions while runs are in progress
+
+Do not idle. For each eval, draft assertions that are objectively verifiable and read clearly in the viewer ("output has one row per customer", not "output is good"). Explain them to the user. Skip forcing assertions onto subjective output. Save to `eval_metadata.json` and `evals/evals.json`.
+
+### Step 3: capture timing as each run completes
+
+Subagent completion notices carry `total_tokens` and `duration_ms`. Write them to `timing.json` in the run directory immediately; that data is not stored anywhere else.
+
+```json
+{"total_tokens": 84852, "duration_ms": 23332, "total_duration_seconds": 23.3}
 ```
-bigquery-skill/
-├── SKILL.md (overview + navigation)
-└── references/
-    ├── finance.md    ← loaded only for finance queries
-    ├── sales.md      ← loaded only for sales queries
-    └── product.md    ← loaded only for product queries
-```
 
-**Pattern 3 — Conditional details:**
-```markdown
-## Editing documents
-For simple edits, modify XML directly.
-**For tracked changes**: See references/redlining.md
-**For OOXML details**: See references/ooxml.md
-```
+### Step 4: grade, aggregate, analyze, show the user
 
-**Guidelines:**
-- Keep references one level deep from SKILL.md (no nested references)
-- For files >100 lines, include a table of contents at top
-
-## Skill Patterns
-
-Skills generally fall into categories. Consult `references/skill-patterns.md` for detailed examples of each:
-
-- **Standalone skills** — Document/asset creation with no external tools
-- **Workflow automation** — Multi-step processes with validation gates
-- **MCP-enhanced workflows** — Coordinating external services via MCP
-- **Problem-first workflows** — Sequential orchestration with dependencies
-- **Tool-first workflows** — Multi-MCP coordination across services
-- **Iterative refinement** — Quality gates with validation loops
-
-## Skill Creation Process
-
-1. **Understand** the skill with concrete examples
-2. **Plan** reusable skill contents (scripts, references, assets)
-3. **Initialize** the skill (run `init_skill.py`)
-4. **Edit** the skill (implement resources and write SKILL.md)
-5. **Test** the skill against real usage
-6. **Package and distribute** (run `package_skill.py`)
-7. **Iterate** based on feedback
-
-### Step 1: Understand the Skill
-
-Skip only when usage patterns are already clearly understood.
-
-Gather concrete examples of how the skill will be used. Ask:
-
-- "What functionality should this skill support?"
-- "Can you give examples of how it would be used?"
-- "What would a user say that should trigger this skill?"
-
-Avoid overwhelming users with too many questions at once. Conclude when there's a clear picture of the functionality the skill should support.
-
-### Step 2: Plan Reusable Contents
-
-For each concrete example, analyze:
-1. How would you execute this from scratch?
-2. What scripts, references, or assets would help when doing this repeatedly?
-
-Examples of this analysis:
-- PDF rotation → same code rewritten each time → `scripts/rotate_pdf.py`
-- Frontend webapp → same boilerplate each time → `assets/hello-world/` template
-- BigQuery queries → schema re-discovered each time → `references/schema.md`
-
-### Step 3: Initialize the Skill
-
-Run `scripts/init_skill.py` to scaffold:
+1. **Grade** each run: spawn a grader (or grade inline) following `agents/grader.md`; write `grading.json`. The `expectations` entries must use the fields `text`, `passed`, `evidence`; the viewer depends on those names. Check mechanical assertions with a script instead of eyeballing.
+2. **Aggregate**: `python scripts/aggregate_benchmark.py <workspace>/iteration-N --skill-name <name>` writes `benchmark.json` and `benchmark.md` (pass rate, time, tokens; mean, stddev, delta). List each with-skill result before its baseline.
+3. **Analyst pass**: read the benchmark for what averages hide. See "Analyzing Benchmark Results" in `agents/analyzer.md`: assertions that always pass (non-discriminating), high variance (flaky), time and token tradeoffs.
+4. **Launch the viewer before you start judging results yourself**; get outputs in front of the human quickly:
 
 ```bash
-scripts/init_skill.py <skill-name> --path <output-dir>
-scripts/init_skill.py <skill-name> --path <output-dir> --resources scripts,references
-scripts/init_skill.py <skill-name> --path <output-dir> --resources scripts --examples
+python eval-viewer/generate_review.py <workspace>/iteration-N \
+  --skill-name "my-skill" --benchmark <workspace>/iteration-N/benchmark.json \
+  [--previous-workspace <workspace>/iteration-<N-1>]
 ```
 
-Creates a skill directory with SKILL.md template, TODO placeholders, and optional resource directories.
+   It serves a local page (run it in the background and remember the PID). Headless or no browser: add `--static <path>.html` to write a standalone file; "Submit All Reviews" then downloads `feedback.json`, which the user must place in the workspace. Use `generate_review.py`; do not hand-write review HTML.
+5. **Tell the user**: "Results are open. The Outputs tab lets you click through each test case and leave feedback; the Benchmark tab shows the numbers. Tell me when you're done."
 
-### Step 4: Edit the Skill
+The Outputs tab shows the prompt, produced files, last iteration's output and feedback (iteration 2+), formal grades, and a feedback box. Next/prev or arrow keys navigate.
 
-The skill is being created for another AI assistant instance to use. Include information that would be beneficial and non-obvious. Consider what procedural knowledge, domain-specific details, or reusable assets would help another instance execute effectively.
+### Step 5: read feedback
 
-**Writing guidelines:**
-- Use imperative/infinitive form
-- Explain the *why* behind instructions — AI assistants respond better to reasoning than rigid commands
-- Prefer concrete examples over verbose explanations
-- If you find yourself writing ALWAYS/NEVER in caps, reframe as reasoning instead
-- Teach *approaches*, not *answers* — the skill should generalize beyond the examples used to build it
+```json
+{"reviews": [{"run_id": "eval-top-months-chart-with_skill", "feedback": "axis labels missing", "timestamp": "..."}], "status": "complete"}
+```
 
-**For pattern guidance**, consult `references/skill-patterns.md`.
+Empty feedback means the output was fine. Prioritize cases with specific complaints. Stop the viewer server afterward (`kill $VIEWER_PID`).
 
-**For script design guidance**, consult `references/writing-scripts.md`.
+## 4. Improve
 
-**Update frontmatter:**
-- Write the description with both *what* and *when* — all "when to use" info goes in the description, not the body
-- For optimization techniques, see `references/description-optimization.md`
+1. **Generalize.** The user and you iterate on a few examples, but the skill must work across countless prompts. Avoid fiddly overfitted patches and rigid MUSTs. If something stubborn persists, try a different metaphor or working pattern.
+2. **Keep it lean.** Read the run transcripts, not just final outputs. If the skill sends agents down unproductive paths, delete the instructions causing it.
+3. **Explain the why.** Understand what the user was reacting to and pass that understanding into the instructions.
+4. **Bundle repeated work.** If every run independently wrote the same helper script or followed the same multi-step approach, put that in `scripts/` and reference it.
 
-**Test scripts** by actually running them to verify no bugs and expected output.
+Draft the revision, then reread it fresh. Then iterate:
 
-### Step 5: Test the Skill
+1. Apply changes.
+2. Rerun all evals into `iteration-<N+1>/`, baselines included. New skills keep `without_skill`; improvements may compare against the original or the previous iteration.
+3. Open the viewer with `--previous-workspace`.
+4. Read new feedback, improve, repeat.
 
-Testing rigor should match the skill's visibility and impact. See `references/testing-methodology.md` for the full methodology covering:
+Stop when the user is happy, all feedback is empty, or progress stalls. Then expand the test set and run at larger scale if stakes warrant.
 
-- **Triggering tests** — Does it load for the right queries and not for wrong ones?
-- **Functional tests** — Does it produce correct outputs?
-- **Baseline comparison** — Is it better than no skill at all?
-- **Structured evals** — JSON-based test cases, assertions, grading, and benchmarking
-- **Pressure testing** — For discipline-enforcing skills, does it hold up under pressure?
+## 5. Blind comparison (optional)
 
-**Eval tooling** (all platform-agnostic, stdlib-only Python):
-- `scripts/aggregate_benchmark.py` — Aggregates grading results into benchmark statistics with mean/stddev/delta
-- `scripts/generate_report.py` — Generates HTML reports from description optimization loops
-- `eval-viewer/generate_review.py` — Serves an interactive review UI for eval outputs; supports `--static` for standalone HTML
+When the user asks "is the new version actually better?", give two outputs to an independent agent without labels (`agents/comparator.md`), then analyze why the winner won (`agents/analyzer.md`). Requires subagents. The human review loop is usually enough.
 
-**Agent role files** — For environments that support spawning subagents, read the appropriate file before assigning the role:
-- `agents/grader.md` — Evaluates assertions against outputs with evidence-based pass/fail
-- `agents/comparator.md` — Blind A/B comparison between two outputs without knowing which skill produced them
-- `agents/analyzer.md` — Post-hoc analysis of why a winner won, with improvement suggestions
+## 6. Optimize the description
 
-**JSON schemas** — See `references/schemas.md` for the complete format definitions of `evals.json`, `grading.json`, `timing.json`, `benchmark.json`, `comparison.json`, `analysis.json`, and `history.json`.
+After the skill is in good shape, offer to tune triggering. Detailed method and honest limits: `references/description-optimization.md`.
 
-**Quick approach:** Iterate on a single challenging task until the AI assistant succeeds, then extract the winning approach into the skill. Expand to multiple test cases for coverage.
-
-### Step 6: Package and Distribute
-
-Validate and package:
+1. **Write ~20 trigger queries**, half should-trigger, half should-not, saved as `[{"query": "...", "should_trigger": true}, ...]`. Make them realistic and detailed (paths, names, backstory, typos, casual phrasing). Should-not cases must be near-misses that share keywords, not obviously unrelated ones. Queries must be substantive enough that the agent would actually consult a skill; one-step trivial asks trigger nothing regardless of description.
+2. **Review with the user** via `assets/eval_review.html`: replace `__EVAL_DATA_PLACEHOLDER__` (raw JSON array), `__SKILL_NAME_PLACEHOLDER__`, `__SKILL_DESCRIPTION_PLACEHOLDER__`, write to a temp file, open it; the user edits and exports `eval_set.json` (check Downloads for the latest copy). Headless: show the list in chat and take edits there.
+3. **Run the loop** (in the background; it takes a while). Pick the runner that matches the runtime the skill will live in:
 
 ```bash
-scripts/quick_validate.py <path/to/skill-folder>
-scripts/package_skill.py <path/to/skill-folder> [output-dir]
+python -m scripts.run_loop --eval-set trigger-evals.json --skill-path <skill> \
+  --runner claude|hermes [--model <id>] --max-iterations 5 --verbose --results-dir <workspace>/desc-opt
+python -m scripts.run_loop ... --dry-run     # offline plumbing check, scores are meaningless
 ```
 
-Creates a `.skill` file (zip with `.skill` extension) ready for upload or sharing.
+   It splits the set 60/40 train/held-out test, runs each query 3 times, proposes revisions from train failures only, and returns `best_description` chosen by held-out score. `run_eval.py` runs a single evaluation; `improve_description.py` does a single revision.
+4. **Apply** `best_description` to the frontmatter and show before and after with scores. Then validate again.
 
-For distribution guidance (GitHub hosting, MCP integration docs), see `references/distribution.md`.
+## 7. Validate and package
 
-### Step 7: Iterate
+```bash
+python scripts/quick_validate.py <skill>                    # warnings for non-spec keys
+python scripts/quick_validate.py <skill> --target claude-ai # non-spec keys are errors
+python scripts/package_skill.py <skill> [out-dir]           # keeps everything
+python scripts/package_skill.py <skill> [out-dir] --target claude-ai   # strips non-spec top-level keys from the copy
+```
 
-Skills are living documents. Track improvements through real usage:
+Validator exit codes: 0 valid (warnings allowed), 1 errors, 2 usage. It flags dotted top-level keys such as `metadata.openclaw` (YAML does not nest them; indent under `metadata:` instead). Distribution, hosting, and update etiquette: `references/distribution.md`. Problems in the field: `references/troubleshooting.md`.
 
-- **Pattern recognition**: "After 3 similar requests, skill struggled with X" → update SKILL.md
-- **Triggering issues**: "User had to manually enable skill for Y" → improve description
-- **Execution problems**: "MCP tool Z failed with error E" → add error handling
-- **Gotcha discovered**: Agent keeps making the same wrong assumption → add to gotchas section
+Checklist before shipping: description has what and when; name matches directory; no angle brackets in frontmatter; requirements stated in `compatibility` and a Prerequisites section; references linked with when-to-read guidance; scripts actually run; the evals pass or the user accepted the gaps.
 
-For common issues and fixes, see `references/troubleshooting.md`.
+## Runtime notes
 
-## Quick Checklist
+The workflow is identical everywhere; mechanics differ.
 
-### Before Packaging
+**Subagents available** (Hermes `delegate_task`, Claude Code subagents): parallelize runs and grading as described. Give each child complete context, since it knows nothing of the conversation. Treat child reports as claims; spot-check outputs. If a run times out, retry once narrower, then run it inline.
 
-- [ ] 2-3 concrete use cases identified
-- [ ] Required tools identified (built-in or MCP)
-- [ ] Folder named in kebab-case
-- [ ] SKILL.md exists (exact case)
-- [ ] YAML frontmatter has `---` delimiters
-- [ ] `name`: kebab-case, no spaces, no capitals, matches folder name
-- [ ] `description`: includes WHAT and WHEN, under 1024 chars, third person
-- [ ] No XML angle brackets anywhere in frontmatter
-- [ ] Instructions are clear and actionable
-- [ ] Error handling included for critical operations
-- [ ] Examples provided for non-obvious workflows
-- [ ] References clearly linked from SKILL.md with when-to-read guidance
-- [ ] Scripts tested by running them
-- [ ] Scripts designed for non-interactive agentic use (see `references/writing-scripts.md`)
+**No subagents** (claude.ai, or constrained environments): for each test case, read the skill and carry out the task yourself, one at a time. This is weaker (you wrote the skill and hold its full context), but it catches obvious failures and the human review compensates. Skip baselines, the quantitative benchmark, and blind comparison; collect qualitative feedback instead. Keep the iteration directories if you have a filesystem.
 
-### After Upload
+**Display vs headless**: with a browser, run the viewer server. Without one (remote server, sandbox), use `--static`, give the user the file path, and ask them to return `feedback.json`. If they cannot open files, present each prompt and output in chat and ask for feedback inline.
 
-- [ ] Triggers correctly on obvious tasks
-- [ ] Triggers on paraphrased requests
-- [ ] Does NOT trigger on unrelated topics
-- [ ] Functional tests pass
-- [ ] Tool integrations work (if applicable)
-- [ ] User feedback collected and incorporated
+**Hermes**: parallel runs via `delegate_task` (up to its concurrency limit, children cannot ask the user questions). Non-interactive single runs: `hermes chat -Q -q "<prompt>"` (add `-s <skill>` to preload a skill for a with-skill run). Description optimization: `--runner hermes`; it simulates skill selection from the skills listing rather than observing a real tool call, so use it to compare descriptions, not as an absolute trigger rate (`references/description-optimization.md`). Hermes reads env vars only from top-level `required_environment_variables`.
+
+**Claude Code**: subagents via the Task tool; non-interactive runs via `claude -p`. Description optimization: `--runner claude` observes real Skill/Read tool calls via a temporary command file, the most faithful option. Run it from the project root so `.claude/` is found.
+
+**claude.ai**: no subagents, no `claude -p`. Skip description optimization and benchmarking. Package with `--target claude-ai` and hand the user the `.skill` file. If the installed skill path is read-only, stage a copy in a writable directory first.
+
+If `claude -p` or `hermes` is unavailable where the skill is being built, tune the description by hand: write the trigger queries anyway, then reason through each against the description, and have the user test a few in the real runtime.
+
+## Reference files
+
+- `agents/grader.md`, `agents/comparator.md`, `agents/analyzer.md`: roles for subagents or inline passes
+- `references/frontmatter-fields.md`: every frontmatter field, who reads it, upload safety, examples
+- `references/schemas.md`: JSON formats (evals, grading, timing, benchmark, comparison, analysis, trigger evals)
+- `references/description-optimization.md`: writing descriptions, the optimization loop, runners and their limits
+- `references/testing-methodology.md`: triggering, functional, baseline, structured and pressure testing
+- `references/skill-patterns.md`, `references/writing-scripts.md`: structure and script design
+- `references/troubleshooting.md`, `references/distribution.md`: fixes and sharing
+
+Attribution: the driven eval loop, grader, comparator, analyzer, viewer, and trigger-eval scripts are adapted from Anthropic's skill-creator (Apache-2.0).
