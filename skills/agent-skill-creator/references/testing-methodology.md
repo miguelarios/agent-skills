@@ -98,14 +98,14 @@ Store test cases in `evals/evals.json`:
 Organize results by iteration, with side-by-side with/without-skill runs:
 
 ```
-workspace/
+my-skill-workspace/
 └── iteration-1/
     ├── eval-top-months-chart/
     │   ├── with_skill/
     │   │   ├── outputs/
     │   │   ├── timing.json
     │   │   └── grading.json
-    │   └── without_skill/
+    │   └── without_skill/   (old_skill/ when improving)
     │       └── ...
     ├── eval-clean-missing-emails/
     │   └── ...
@@ -118,7 +118,7 @@ Evaluate each assertion against actual outputs. Require concrete evidence for a 
 
 ### Benchmark Aggregation
 
-Run `scripts/aggregate_benchmark.py <workspace>/iteration-N` to produce `benchmark.json` and `benchmark.md` with pass_rate, time, and tokens for each configuration, including mean ± stddev and delta. See `references/schemas.md` for the full benchmark format.
+Run `scripts/aggregate_benchmark.py <workspace>/iteration-N --skill-name <name>` to produce `benchmark.json` and `benchmark.md` with pass_rate, time, and tokens for each configuration, including mean ± stddev and delta. See `references/schemas.md` for the full benchmark format.
 
 The delta tells you what the skill costs (time, tokens) and what it buys (pass rate). A skill that adds 13 seconds but improves pass rate by 50 points is probably worth it.
 
