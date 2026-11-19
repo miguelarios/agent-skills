@@ -12,6 +12,17 @@ npx skills add -g miguelarios/agent-skills -a claude-code -a codex -a goose -y
 npx skills add -g miguelarios/agent-skills -s recipe-manager -a claude-code -a codex -a goose -y
 ```
 
+### Hermes Agent
+
+```bash
+# Subscribe to this repo as a tap, then search/install like any hub skill
+hermes skills tap add miguelarios/agent-skills
+hermes skills install miguelarios/agent-skills/skills/recipe-manager
+
+# Or install one skill without adding the tap
+hermes skills install miguelarios/agent-skills/skills/agent-skill-creator
+```
+
 ## Update
 
 ```bash
