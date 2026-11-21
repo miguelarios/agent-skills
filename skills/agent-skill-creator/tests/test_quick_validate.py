@@ -52,6 +52,23 @@ class DescriptionYamlValidationTests(unittest.TestCase):
 
         self.assertTrue(valid, message)
 
+    def test_column_zero_list_items_are_not_keys_without_pyyaml(self):
+        # PyYAML dumps lists under a key without indentation; the fallback
+        # parser must not read "- name: ..." as a top-level key.
+        with tempfile.TemporaryDirectory() as temp_dir:
+            skill_dir = Path(temp_dir) / "example-skill"
+            skill_dir.mkdir()
+            (skill_dir / "SKILL.md").write_text(
+                "---\nname: example-skill\ndescription: Does a thing.\n"
+                "required_environment_variables:\n- name: FOO_API_KEY\n  prompt: Foo key\n"
+                "metadata:\n  sync:\n    sets:\n    - personal\n---\n\n# Example\n",
+                encoding="utf-8",
+            )
+            with patch.object(quick_validate, "yaml", None):
+                errors, warnings = quick_validate.check_skill(skill_dir)
+        self.assertEqual(errors, [])
+        self.assertFalse([w for w in warnings if "'- name'" in w], warnings)
+
 
 class SpecAndTargetTests(unittest.TestCase):
     def make(self, frontmatter: str, dirname: str = "example-skill"):
