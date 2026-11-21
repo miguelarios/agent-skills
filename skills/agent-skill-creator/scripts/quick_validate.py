@@ -55,8 +55,11 @@ def _parse_simple_frontmatter(frontmatter_text: str) -> Optional[dict[str, str]]
         if not stripped or stripped.startswith("#"):
             continue
 
+        # Indented lines and column-0 sequence items ("- x", as PyYAML dumps
+        # lists under a key) both belong to the current key's value.
         is_indented = raw_line[:1].isspace()
-        if is_indented:
+        is_seq_item = stripped == "-" or stripped.startswith("- ")
+        if is_indented or is_seq_item:
             if current_key is None:
                 return None
             current_value = parsed[current_key]

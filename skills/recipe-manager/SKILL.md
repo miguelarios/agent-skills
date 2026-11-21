@@ -1,6 +1,11 @@
 ---
 name: recipe-manager
 description: USE THIS FIRST for any recipe work. Covers recipe creation (formatting ingredients, writing methods, setting measurements and timing) and recipe organization (categorizing, tagging, managing sources). Use when user asks to create, format, finalize, write, organize, or categorize recipes.
+metadata:
+  hermes:
+    tags:
+    - recipes
+    - cooking
 ---
 
 # Recipe Manager

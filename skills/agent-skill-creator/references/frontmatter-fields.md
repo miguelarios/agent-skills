@@ -115,3 +115,11 @@ State requirements in all three places so the skill still works when one is igno
 ```
 
 Never put real secrets in any of these; name the variable only.
+
+**Credential checks** test for presence and never echo the value. Runtimes often load their secrets file only at session start, so also check the file. A key added mid-session isn't in the environment yet, and the script should read the same file as a fallback:
+
+```bash
+[ -n "$FOO_API_KEY" ] || grep -q '^FOO_API_KEY=.' ~/.hermes/.env && echo present || echo missing
+```
+
+Presence isn't validity, so follow up with one cheap authenticated call (a `doctor` subcommand). When the key is missing, the skill says where to create it and which file it goes in. It never asks the user to paste it into chat. When the agent can't run commands at all, hand over the commands as blocks for the user to run, and don't describe them as done.

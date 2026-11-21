@@ -2,6 +2,12 @@
 name: agent-skill-creator
 description: Create new agent skills, improve existing ones, test them with evals, optimize their descriptions for triggering, and package them for upload. Use whenever the user wants to create a skill, turn a workflow or conversation into a skill, capture something reusable, edit or fix a skill, run evals or benchmarks on a skill, check why a skill does not trigger, validate frontmatter, or package a skill for claude.ai, Claude Code, Hermes or another runtime, even if they never say "skill creator".
 compatibility: Python 3.9+ for the bundled scripts (PyYAML optional). Subagents, a browser, and the claude or hermes CLI are optional; the workflow degrades without them.
+metadata:
+  hermes:
+    tags:
+    - skills
+    - authoring
+    - evals
 ---
 
 # Agent Skill Creator
@@ -44,7 +50,7 @@ Ask about edge cases, input and output formats, example files, success criteria,
 python scripts/init_skill.py <skill-name> --path <output-dir> [--resources scripts,references,assets] [--examples]
 ```
 
-Skip it when editing an existing skill. Update an existing skill in place: keep its `name` and directory name unchanged (no `-v2`). If the installed copy is read-only, copy it to a writable location, edit there, and package from the copy.
+It writes a TODO-template `SKILL.md`; editors with a read-before-write guard refuse to overwrite a file they haven't read, so read the template (or delete it) before writing the real one. Skip it when editing an existing skill. Update an existing skill in place: keep its `name` and directory name unchanged (no `-v2`). If the installed copy is read-only, copy it to a writable location, edit there, and package from the copy.
 
 ### Write SKILL.md
 
@@ -68,6 +74,8 @@ Do not add README.md, CHANGELOG.md or install guides inside the skill. Consult `
 
 **Tool-dependent skills:** before drafting, call each tool the skill will rely on once with a realistic query and note what it actually returns (empty results, blocked routes, truncation). Write the procedure around the routes that worked and keep observed quirks in a tool-notes reference inside the skill being built; a skill drafted from tool schemas alone sends every run into the same dead end. Name tools by their exact runtime names (Hermes deferred MCP tools: `mcp__<server>__<tool>`, called via `tool_call`) and say explicitly when the skill's preferred tool overrides a general environment default; otherwise runs silently fall back to the default built-in tools. Put the same tool instructions inside any brief the skill hands to subagents, since children do not read the parent skill.
 
+**Skills that wrap the user's own account** (an alias service, a task app, a bank feed): before asking the user design questions, list their existing data read-only and infer their conventions from it (naming patterns, which domain/project/category goes with which use, note formats, defaults in their settings). Encode those as a conventions table in SKILL.md and state them back to the user as inferred defaults. Open questions the data answers waste a round-trip, and conventions taken from the data match what the user actually does, not what they would describe. Keep conventions in SKILL.md, and put account facts that drift (counts, ids) in tool-notes as "run X for the current list".
+
 Principle of least surprise: no malware, exfiltration, or misleading behavior; the skill's contents should match what its description promises. Role-play skills are fine.
 
 ### Frontmatter
@@ -79,7 +87,7 @@ Rules of thumb:
 - Put platform extras under `metadata.<platform>` (e.g. `metadata.hermes.tags`). Nested metadata is accepted everywhere.
 - Use a top-level platform key only when it buys behavior that nothing else provides, such as Hermes `required_environment_variables` (prompts for missing keys and passes them to sandboxes) or Claude Code `disable-model-invocation`.
 - For a claude.ai upload, build with `package_skill.py --target claude-ai`. It strips non-spec top-level keys from the packaged copy only and prints what it removed. The source stays as written.
-- Say what the skill needs in three places so it degrades gracefully: the `compatibility` text (every runtime), the runtime-specific field (when targeting that runtime), and a **Prerequisites** section in the body with a fallback when the tool or key is missing.
+- Say what the skill needs in three places so it degrades gracefully: the `compatibility` text (every runtime), the runtime-specific field (when targeting that runtime), and a **Prerequisites** section in the body with a fallback when the tool or key is missing. Put Prerequisites above the first workflow step: an agent that reads the steps first commits to them before it checks anything.
 
 Full field table, examples, and the tools-needed pattern: `references/frontmatter-fields.md`.
 
