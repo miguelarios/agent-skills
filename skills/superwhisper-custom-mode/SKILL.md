@@ -1,6 +1,12 @@
 ---
 name: superwhisper-custom-mode
 description: Superwhisper custom mode advisor — recommends full mode configurations (instructions, examples, context options, auto-activation) for specific use cases, and supports A/B testing iterations when modes need refinement.
+metadata:
+  hermes:
+    tags:
+    - superwhisper
+    - dictation
+    - prompts
 ---
 
 # Superwhisper Custom Mode Advisor
