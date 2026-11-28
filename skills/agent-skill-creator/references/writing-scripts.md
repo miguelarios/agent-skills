@@ -176,6 +176,16 @@ Use relative paths from the skill directory root. List available scripts so the 
 - "Run `analyze_form.py` to extract fields" → execute the script
 - "See `analyze_form.py` for the extraction algorithm" → read as reference
 
+## Scripts That Would Need Hermes-Managed Tools
+
+Before bundling a script that calls a service, check that the script can reach the tool the skill's goal depends on, with the features that goal needs. Often the right answer is no script: the agent calls the MCP tools directly.
+
+- **Hermes withholds the keys behind its own tools** (search, extract, model providers) from the terminal and `execute_code`, even when the skill declares them. A script that calls such an API with an env key fails in a normal session.
+- **`execute_code` only sees its `hermes_tools` stub** (built-in web search and extract, files, terminal), not MCP servers. A script there gets the built-in tools' parameters, which may lack the feature the skill exists for: site goggles, path-scoped domains, extract depth.
+- **If the skill's value depends on an MCP's features, don't script around it.** Have the agent issue the MCP calls itself; parallel calls in one turn are cheap. Saving tool calls is not worth losing the guarantee the user asked for. The user's questions about mechanism ("did you use code mode?") are curiosity, not a direction. If a suggested mechanism doesn't serve the goal, say so instead of adopting it.
+- **When the built-in tool genuinely suffices:** run the script inside `execute_code` via `hermes_tools` (detect it with `try: import hermes_tools`), with a CLI and env-key backend for other runtimes. Budget tool calls against the per-run cap. Drop the module from `sys.modules` after edits, because the kernel persists. Test both backends.
+- **Test any key-dependent script from a fresh shell**, then `skill_view` the skill and look for `env_passthrough_refused`. A key sourced into your own shell makes every build-time test pass, and the first real session fails.
+
 ## When to Bundle vs. Generate
 
 Bundle a script when:

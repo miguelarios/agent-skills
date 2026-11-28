@@ -16,18 +16,18 @@ Contents: field table · design rule · examples · the tools-needed pattern · 
 | `allowed-tools` | top | spec (experimental); Claude Code honors it | yes | Pre-approved tools, e.g. `Bash(python:*) WebFetch`. Support varies. |
 | `when_to_use` | top | Claude Code | **no** | Extra trigger text appended to description. Description + `when_to_use` truncate at 1536 chars in the listing. |
 | `argument-hint`, `arguments` | top | Claude Code | no | Slash-command argument UX. |
-| `disable-model-invocation` | top | Claude Code | no | Only the user can invoke the skill. |
+| `disable-model-invocation` | top | Claude Code | no | Slash-only: the skill leaves the model's index and runs only when the user invokes it. Check whether each target runtime honors it before promising slash-only behavior. Hermes turns every skill into a `/skill-name` command, but at the time of writing it ignored this key, and Hermes' `skills.disabled` removes the slash command along with the index entry. For slash-first skills, pair it with a narrow description ("Use when the user invokes /<name> or asks for <thing> by name") so runtimes that ignore the key still rarely pick the skill on their own. |
 | `user-invocable` | top | Claude Code | no | Hide from the slash menu when false. |
 | `disallowed-tools` | top | Claude Code | no | Tools blocked while the skill is active. |
 | `model`, `effort` | top | Claude Code | no | Override model or effort for the skill. |
 | `context` (fork), `agent`, `background` | top | Claude Code | no | Run the skill in a forked subagent. |
 | `hooks` | top | Claude Code | no | Lifecycle hooks scoped to the skill. |
-| `required_environment_variables` | top | Hermes | no | List of `{name, prompt, help, required_for}`. Hermes prompts for missing keys in the CLI and passes them into sandboxes. Legacy alias: `prerequisites.env_vars`. Hermes reads env vars only at top level. |
+| `required_environment_variables` | top | Hermes | no | List of `{name, prompt, help, required_for}`. Hermes prompts for missing keys in the CLI and passes them into sandboxes, except Hermes-managed credentials (provider keys and the keys behind its own tools, such as `BRAVE_SEARCH_API_KEY` for web search), which are always refused (`skill_view` returns `env_passthrough_refused`). Legacy alias: `prerequisites.env_vars`. Hermes reads env vars only at top level. |
 | `platforms` | top | Hermes | no | Host OS filter: `linux`, `macos`, `windows`. |
 | `required_credential_files` | top | Hermes | no | Credential files to mount into sandboxes. |
 | `metadata.hermes.tags` | nested | Hermes | yes | Search and grouping. |
 | `metadata.hermes.related_skills` | nested | Hermes | yes | Cross-links. |
-| `metadata.hermes.requires_toolsets`, `requires_tools` | nested | Hermes | yes | Show the skill only when those tools exist. |
+| `metadata.hermes.requires_toolsets`, `requires_tools` | nested | Hermes | yes | Show the skill only when those tools exist. Hermes checks the names against the session's loaded tool list. Before gating on an MCP tool that loads on demand (reached via `tool_search`/`tool_call`), confirm its name appears in that list, or the gate hides the skill even when the tool works. Otherwise enforce the requirement in `compatibility` and Prerequisites. |
 | `metadata.hermes.fallback_for_toolsets`, `fallback_for_tools` | nested | Hermes | yes | Hide the skill when the primary tool exists (the skill is the fallback). |
 | `metadata.hermes.config` | nested | Hermes | yes | List of `{key, description, default, prompt}` stored in `config.yaml` under `skills.config`. |
 | `metadata.hermes.blueprint` | nested | Hermes | yes | `schedule`, `deliver`, `prompt`, `no_agent` for cron-style runs. |
@@ -84,6 +84,8 @@ metadata:
 
 Hermes prompts for the key and passes it to sandboxes. The top-level fields are stripped by `--target claude-ai`; the `compatibility` text and body Prerequisites survive.
 
+When the key is one Hermes manages for its own tools (web search, extract, model providers), declaring it does nothing: the script will never see it. Usually the fix is no script: have the agent call the MCP tools directly, which keeps features like goggles and path scoping. Use an `execute_code` script on `hermes_tools` only when the built-in tool really is enough. See "Scripts That Would Need Hermes-Managed Tools" in `writing-scripts.md`.
+
 ### Claude Code-enhanced
 
 ```yaml
@@ -106,7 +108,7 @@ State requirements in all three places so the skill still works when one is igno
 
 1. **`compatibility` text** (every runtime, upload-safe): "Needs WEATHER_API_KEY and curl."
 2. **Runtime fields** when targeting that runtime: Hermes `required_environment_variables`, `metadata.hermes.requires_tools`, or Claude Code `allowed-tools`.
-3. **A Prerequisites section in the body**, with a fallback:
+3. **A Prerequisites section in the body**: a fallback for optional tools, and "stop and tell the user" for hard requirements (see "Hard dependencies are stated as hard" in SKILL.md):
 
 ```markdown
 ## Prerequisites
@@ -115,3 +117,11 @@ State requirements in all three places so the skill still works when one is igno
 ```
 
 Never put real secrets in any of these; name the variable only.
+
+**Credential checks** test for presence and never echo the value. Runtimes often load their secrets file only at session start, so also check the file. A key added mid-session isn't in the environment yet, and the script should read the same file as a fallback:
+
+```bash
+[ -n "$FOO_API_KEY" ] || grep -q '^FOO_API_KEY=.' ~/.hermes/.env && echo present || echo missing
+```
+
+Presence isn't validity, so follow up with one cheap authenticated call (a `doctor` subcommand). When the key is missing, the skill says where to create it and which file it goes in. It never asks the user to paste it into chat. When the agent can't run commands at all, hand over the commands as blocks for the user to run, and don't describe them as done.
