@@ -2,6 +2,12 @@
 name: agent-skill-creator
 description: Create new agent skills, improve existing ones, test them with evals, optimize their descriptions for triggering, and package them for upload. Use whenever the user wants to create a skill, turn a workflow or conversation into a skill, capture something reusable, edit or fix a skill, run evals or benchmarks on a skill, check why a skill does not trigger, validate frontmatter, or package a skill for claude.ai, Claude Code, Hermes or another runtime, even if they never say "skill creator".
 compatibility: Python 3.9+ for the bundled scripts (PyYAML optional). Subagents, a browser, and the claude or hermes CLI are optional; the workflow degrades without them.
+metadata:
+  hermes:
+    tags:
+    - skills
+    - authoring
+    - evals
 ---
 
 # Agent Skill Creator
@@ -44,7 +50,7 @@ Ask about edge cases, input and output formats, example files, success criteria,
 python scripts/init_skill.py <skill-name> --path <output-dir> [--resources scripts,references,assets] [--examples]
 ```
 
-Skip it when editing an existing skill. Update an existing skill in place: keep its `name` and directory name unchanged (no `-v2`). If the installed copy is read-only, copy it to a writable location, edit there, and package from the copy.
+It writes a TODO-template `SKILL.md`; editors with a read-before-write guard refuse to overwrite a file they haven't read, so read the template (or delete it) before writing the real one. Skip it when editing an existing skill. Update an existing skill in place: keep its `name` and directory name unchanged (no `-v2`). If the installed copy is read-only, copy it to a writable location, edit there, and package from the copy.
 
 ### Write SKILL.md
 
@@ -64,9 +70,21 @@ skill-name/
 └── evals/          evals.json test prompts (optional but recommended)
 ```
 
+**Flowcharts:** search and research skills (and any skill whose core is a loop) open with a mermaid flowchart of the process, which Miguel wants. Render every chart on its own with `mmdc` (`npx -y -p @mermaid-js/mermaid-cli mmdc -i f.mmd -o f.png`) after each edit, and read the output: mmdc exits 0 even on a parse error, so a stack trace (or no "Generating" line) is the failure signal. Give subgraphs an id and a bracketed title (`subgraph CO [Coordinator: deep mode]`): a bare title with a comma or other punctuation breaks the parse.
+
+**Variants of an engine skill** (a topic Space on a research skill): the variant points at the engine's mode and lists only its overrides; never copy the engine's workflow into a second file, or fixes to the engine stop reaching the variants. Details: `references/skill-patterns.md`.
+
 Do not add README.md, CHANGELOG.md or install guides inside the skill. Consult `references/skill-patterns.md` for structure patterns (workflow, MCP-enhanced, iterative refinement) and `references/writing-scripts.md` before bundling scripts (non-interactive, helpful errors, structured output).
 
 **Tool-dependent skills:** before drafting, call each tool the skill will rely on once with a realistic query and note what it actually returns (empty results, blocked routes, truncation). Write the procedure around the routes that worked and keep observed quirks in a tool-notes reference inside the skill being built; a skill drafted from tool schemas alone sends every run into the same dead end. Name tools by their exact runtime names (Hermes deferred MCP tools: `mcp__<server>__<tool>`, called via `tool_call`) and say explicitly when the skill's preferred tool overrides a general environment default; otherwise runs silently fall back to the default built-in tools. Put the same tool instructions inside any brief the skill hands to subagents, since children do not read the parent skill.
+
+**Keep the route the user specified.** When the user names the tools or method ("search each site with my MCPs"), that route is the goal. If it hits a blocker (a withheld key, a rate limit, an error pattern), fix or route around the blocker within those tools. Don't switch to whatever tool came up last in conversation. If no fix exists inside the specified route, say so and ask, rather than quietly shipping a different mechanism.
+
+**Removing a tool from a skill means deleting every mention of it.** Strip it from prerequisites, fallback chains, briefs, flowcharts, tool notes and examples, and don't leave "don't use X" notes: any mention keeps the tool in play for a future run. If the user wants it kept for a few specific cases (sites one engine can't reach), it goes only in the per-case notes for those cases. Grep the skill and its siblings for the tool's name afterwards.
+
+**When the user dictates the workflow, encode exactly that workflow.** Don't add options or modes they didn't ask for, even if a sibling skill has them. You own *how* it's implemented: research the tools and code, test, and choose the mechanics. Read the run log of every test for warnings such as loop guards, circuit breakers and pauses, not just for errors: a fan-out that tripped a pause partway through can look finished.
+
+**Skills that wrap the user's own account** (an alias service, a task app, a bank feed): before asking the user design questions, list their existing data read-only and infer their conventions from it (naming patterns, which domain/project/category goes with which use, note formats, defaults in their settings). Encode those as a conventions table in SKILL.md and state them back to the user as inferred defaults. Open questions the data answers waste a round-trip, and conventions taken from the data match what the user actually does, not what they would describe. Keep conventions in SKILL.md, and put account facts that drift (counts, ids) in tool-notes as "run X for the current list".
 
 Principle of least surprise: no malware, exfiltration, or misleading behavior; the skill's contents should match what its description promises. Role-play skills are fine.
 
@@ -77,9 +95,11 @@ Default to the six spec fields: `name`, `description`, `license`, `compatibility
 Rules of thumb:
 
 - Put platform extras under `metadata.<platform>` (e.g. `metadata.hermes.tags`). Nested metadata is accepted everywhere.
-- Use a top-level platform key only when it buys behavior that nothing else provides, such as Hermes `required_environment_variables` (prompts for missing keys and passes them to sandboxes) or Claude Code `disable-model-invocation`.
+- Use a top-level platform key only when it buys behavior that nothing else provides, such as Hermes `required_environment_variables` (prompts for missing keys and passes them to sandboxes) or Claude Code `disable-model-invocation`. It never passes keys that Hermes manages for its own tools (search, extract, model providers). Before scripting around that, check whether the agent should just call the MCP tools directly: see "Scripts That Would Need Hermes-Managed Tools" in `references/writing-scripts.md`.
+- **Test a script that needs a key from a fresh shell**, then `skill_view` the skill and check for `env_passthrough_refused`. A key you sourced into your own shell while building makes every test pass, and then the first real session fails.
 - For a claude.ai upload, build with `package_skill.py --target claude-ai`. It strips non-spec top-level keys from the packaged copy only and prints what it removed. The source stays as written.
-- Say what the skill needs in three places so it degrades gracefully: the `compatibility` text (every runtime), the runtime-specific field (when targeting that runtime), and a **Prerequisites** section in the body with a fallback when the tool or key is missing.
+- Say what the skill needs in three places: the `compatibility` text (every runtime), the runtime-specific field (when targeting that runtime), and a **Prerequisites** section in the body. Put Prerequisites above the first workflow step: an agent that reads the steps first commits to them before it checks anything.
+- **Hard dependencies are stated as hard.** When the method can't run without a tool (the user's chosen search MCP, subagents for a fan-out), `compatibility` says "Requires X", and Prerequisites says to stop and tell the user when it's missing or out of quota. Don't write "best with X" or add a fallback to built-in tools for it: a soft wording makes runs quietly degrade into a different method. Reserve fallbacks for tools that only improve the result (a browser for pages the extractor can't read), and say which ones they are.
 
 Full field table, examples, and the tools-needed pattern: `references/frontmatter-fields.md`.
 
@@ -138,9 +158,10 @@ Execute this task:
 
 Add to every run prompt:
 
-- **A run log.** Ask each run to write `run_log.md` (tools actually called, decisions, fallbacks) and to end with "problems with the skill instructions". Self-reported friction (ambiguous steps, tools the skill named but the run could not call) is the fastest improvement signal, and checking which tools were really used catches a skill that silently falls back to defaults.
+- **A run log.** Ask each run to write `run_log.md` (tools actually called, decisions, fallbacks) and to end with "problems with the skill instructions". Self-reported friction (ambiguous steps, tools the skill named but the run could not call) is the fastest improvement signal, and checking which tools were really used catches a skill that silently falls back to defaults. Before writing a run's "tool X can't do Y" into the skill, reproduce it yourself with the tool's other options (a deeper or advanced mode, the canonical URL form instead of a mirror). Runs usually try a single variant, so an unverified gap becomes a rule that routes every future run around a working tool.
 - **A stand-in for user interaction.** Eval children cannot message the user. If the skill can ask a clarifying question, tell the run to write the exact question to `followup.md` and stop (when testing the ask itself) or log it and assume the likely answer (when testing the rest). Otherwise the run guesses silently and the ask behavior is never tested.
 - **An ambiguous prompt** among the evals when the skill is supposed to ask before acting, so over-asking and under-asking are both visible.
+- **The real invocation path, at least once.** For skills that hand work to subagents (coordinator, researchers), run one test where the main agent reads the skill and writes the handoff itself, instead of you writing a detailed brief for the test child. Hand-written test briefs smuggle in context that the skill's own brief template may be missing.
 
 Baselines: for a **new** skill, no skill at all (`without_skill/`). For an **improvement**, the previous version: before editing, `cp -r <skill> <workspace>/skill-snapshot/` and point the baseline at the snapshot (`old_skill/`).
 
@@ -244,7 +265,7 @@ The workflow is identical everywhere; mechanics differ.
 
 **Display vs headless**: with a browser, run the viewer server. Without one (remote server, sandbox), use `--static`, give the user the file path, and ask them to return `feedback.json`. If they cannot open files, present each prompt and output in chat and ask for feedback inline.
 
-**Hermes**: parallel runs via `delegate_task` (up to its concurrency limit, children cannot ask the user questions). Non-interactive single runs: `hermes chat -Q -q "<prompt>"` (add `-s <skill>` to preload a skill for a with-skill run). Description optimization: `--runner hermes`; it simulates skill selection from the skills listing rather than observing a real tool call, so use it to compare descriptions, not as an absolute trigger rate (`references/description-optimization.md`). Hermes reads env vars only from top-level `required_environment_variables`.
+**Hermes**: parallel runs via `delegate_task` (up to its concurrency limit, children cannot ask the user questions). Non-interactive single runs: `hermes chat -Q -q "<prompt>"` (add `-s <skill>` to preload a skill for a with-skill run). Description optimization: `--runner hermes`; it simulates skill selection from the skills listing rather than observing a real tool call, so use it to compare descriptions, not as an absolute trigger rate (`references/description-optimization.md`). Hermes reads env vars only from top-level `required_environment_variables`. Description length: the skills index clips each description at `skills.index_desc_limit` (default 60, range 60–1024; check with `hermes config get skills.index_desc_limit`), and `skill_manage` rejects descriptions longer than that limit. The tool's built-in guidance says "max 60 chars"; ignore it and follow the spec rule above. If the limit is below the description you need, raise the setting (ask the user first, since it's config) instead of trimming the description.
 
 **Claude Code**: subagents via the Task tool; non-interactive runs via `claude -p`. Description optimization: `--runner claude` observes real Skill/Read tool calls via a temporary command file, the most faithful option. Run it from the project root so `.claude/` is found.
 

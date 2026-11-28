@@ -33,7 +33,7 @@ description: Use when implementing any feature or bugfix, before writing impleme
 - Use imperative phrasing: "Use this skill when..." not "This skill does..."
 - Focus on user intent, not implementation details
 - Write in third person (injected into system prompt)
-- Under 1024 characters (aim for under 500 when possible)
+- Under 1024 characters (aim for under 500 when possible). The spec's 1024 is the limit. Some runtimes clip descriptions in their skill listing or have their tools enforce a shorter cap; that is a display or tool setting, not a reason to rewrite a description shorter. Check the runtime's notes in SKILL.md, and never shorten a user's existing description to fit without asking.
 - No XML angle brackets (`<>`)
 - Quote the entire value or use a block scalar when the description contains `: ` (colon followed by a space); an unquoted `: ` breaks YAML frontmatter
 - Include specific tasks users might say

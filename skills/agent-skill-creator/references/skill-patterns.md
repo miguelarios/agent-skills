@@ -164,6 +164,18 @@ Often the highest-value content in a skill is a list of **gotchas** — environm
 - When an agent makes a mistake you have to correct, add the correction to gotchas — this is one of the most direct ways to improve a skill iteratively
 - Gotchas are NOT general best practices — they're specific facts that contradict what the AI would otherwise assume
 
+## Pattern H: Shared Engine, Slim Variant Skills
+
+**Used for:** A family of skills that run the same method and differ only in instructions and data. Examples: research Spaces (persona plus a source list), per-client report styles, per-repo review rules.
+
+- **One engine, written once.** Put the procedure, briefs, schemas and tool pitfalls in a host skill's `references/` (for example `web-research/references/space-workflow.md`). Each variant is a slim skill: `SKILL.md` holds its instructions, a data file holds its list (`references/sources.yaml`), and its tool-notes hold per-item quirks. The variant's first step is "load <host> and follow <engine file> with this skill's files."
+- **Never fork the engine into a variant.** A fix to the method then reaches every variant at once. Copies drift, and the second variant inherits the first one's stale workarounds.
+- **Data files hold only data.** Build derived forms (query templates, filter strings) from the list inside the engine's brief template, so editing the list never means editing a prompt.
+- **Pin the mode in a variant.** When the user invokes a dedicated variant, they want its full method every time. Pin the engine's most thorough mode (for example, always deep mode) instead of carrying over a quick/deep switch.
+- **Name variants after their engine** (`web-research-cooking`, `web-research-parenting` run on `web-research`), so the name says what runs underneath and typing the engine's name in a slash menu lists every variant.
+- **Slash-invoked variants:** set `disable-model-invocation: true` and also write the description as "Use when the user invokes /<name> or asks for <variant> by name." Runtimes that ignore the field then still behave close to slash-only. See `frontmatter-fields.md`.
+- **Subagents never read the variant.** The engine's brief template must carry everything a child needs, filled in from the variant's files.
+
 ## Instruction Patterns
 
 ### Checklists for Multi-Step Workflows
